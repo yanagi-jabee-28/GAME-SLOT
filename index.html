@@ -141,6 +141,46 @@
 			box-shadow: 0 0px 0 #9a0007;
 		}
 
+		/* ストップボタン用のスタイル */
+		#spin-button.stop-mode {
+			background: linear-gradient(180deg, #36c2f4, #2f89d3);
+			box-shadow: 0 5px 0 #075f9a, 0 8px 15px rgba(0, 0, 0, 0.4);
+		}
+
+		#spin-button.stop-mode:not(:disabled):active {
+			box-shadow: 0 0px 0 #075f9a;
+		}
+
+		/* ストップボタン用のスタイル */
+		#spin-button.stop-mode {
+			background: linear-gradient(180deg, #36c2f4, #2f89d3);
+			box-shadow: 0 5px 0 #075f9a, 0 8px 15px rgba(0, 0, 0, 0.4);
+		}
+
+		#spin-button.stop-mode:not(:disabled):active {
+			box-shadow: 0 0px 0 #075f9a;
+		}
+
+		/* ストップボタン用のスタイル */
+		#spin-button.stop-mode {
+			background: linear-gradient(180deg, #36c2f4, #2f89d3);
+			box-shadow: 0 5px 0 #075f9a, 0 8px 15px rgba(0, 0, 0, 0.4);
+		}
+
+		#spin-button.stop-mode:not(:disabled):active {
+			box-shadow: 0 0px 0 #075f9a;
+		}
+
+		/* ストップボタン用のスタイル */
+		#spin-button.stop-mode {
+			background: linear-gradient(180deg, #36c2f4, #2f89d3);
+			box-shadow: 0 5px 0 #075f9a, 0 8px 15px rgba(0, 0, 0, 0.4);
+		}
+
+		#spin-button.stop-mode:not(:disabled):active {
+			box-shadow: 0 0px 0 #075f9a;
+		}
+
 		/* スピン中のアニメーション */
 		.spinning .reel-inner {
 			animation: scroll-reel 0.2s linear infinite;
@@ -216,16 +256,16 @@
 
 		// 各リールの絵柄の並び順（リールストリップ）
 		// ブランク絵柄をなくし、当たりが出やすいように調整。
-		// また、リールの並びはシャッフルせず、当たりが出やすいようにしつつも、
-		// 高配当の絵柄が連続しないように手動で最適な並び順に調整している。
+		// リールの並びは、高額配当の絵柄が隣接するように配置し、
+		// 「惜しい」と思わせるような、よりスロットらしい演出を狙って調整している。
 		const reel1 = [
-			'🍒', '🍉', '🔔', 'BAR', '👑', '🍒', '🍉', '🔔', '🍒', 'BAR', '🍉', '🍒', '７', '🔔', '🍒', '🍉', 'BAR', '👑', '🔔', '🍒', '🍉'
+			'🍒', '🍉', '🔔', '👑', '👑', '🍒', 'BAR', '７', 'BAR', '🍉', '🔔', '🍒', '🍉', '🔔', 'BAR', '🍒', '🍉', '🔔', '🍒', '🍉', '🍒'
 		]; // 合計21マス
 		const reel2 = [
-			'BAR', '🍒', '🍉', '🔔', '👑', '🍒', '🍉', 'BAR', '🔔', '🍒', '７', '🍉', '🍒', '🔔', 'BAR', '👑', '🍒', '🍉', '🔔', '🍒', '🍉'
+			'🍉', '🍒', 'BAR', '🔔', '👑', '７', '👑', '🍒', '🍉', 'BAR', '🔔', '🍒', '🍉', '🔔', 'BAR', '🍒', '🍉', '🔔', '🍒', '🍉', '🍒'
 		]; // 合計21マス
 		const reel3 = [
-			'👑', 'BAR', '🍒', '🍉', '🔔', '🍒', '７', '🍉', 'BAR', '🔔', '🍒', '🍉', '👑', '🔔', '🍒', 'BAR', '🍉', '🔔', '🍒', '🍉', '🍒'
+			'🔔', '🍒', 'BAR', '🍉', '👑', '７', '🍒', 'BAR', '🍉', '🔔', '👑', '🍒', 'BAR', '🍉', '🔔', '🍒', '🍉', '🔔', '🍒', '🍉', '🍒'
 		]; // 合計21マス
 		const reels = [reel1, reel2, reel3]; // 3本のリールを配列にまとめる
 
@@ -239,13 +279,15 @@
 			'🍉🍉🍉': 20,
 			'🍒🍒🍒': 10,
 		};
-		
+
 
 		// --- ゲームの状態管理 ---
 		// ゲームの進行状況を保存するための変数
 		let credits = 1000; // 所持コイン
 		const spinCost = 10; // 1スピンあたりの消費コイン
 		let isSpinning = false; // 現在スピン中かどうかを示すフラグ
+		let reelsToStop = 0; // 次に停止するリールのインデックス (0, 1, 2)
+		let stopIndexes = []; // 各リールの停止位置を保存する配列
 
 		// --- ゲームロジック ---
 
@@ -263,51 +305,64 @@
 		}
 
 		/**
-		 * スピンボタンが押されたときのメイン処理
+		 * スピンを開始する処理
 		 */
-		async function handleSpin() {
-			// スピン中、またはコインが足りない場合は処理を中断
-			if (isSpinning || credits < spinCost) return;
+		function startSpin() {
+			// コインが足りない場合は処理を中断
+			if (credits < spinCost) return;
 
 			// スピン開始の準備
-			isSpinning = true; // スピン中の状態にする
-			spinButton.disabled = true; // ボタンを一時的に無効化
-			resultDisplay.textContent = 'スピン中...'; // メッセージを更新
+			isSpinning = true;
+			reelsToStop = 0; // 停止対象リールを最初からにリセット
+			stopIndexes = []; // 停止位置の配列をリセット
+			spinButton.textContent = 'ストップ'; // ボタンのテキストを変更
+			spinButton.classList.add('stop-mode'); // ボタンのスタイルを変更
+
+			resultDisplay.textContent = 'ボタンを押してリールを止めよう！';
 			clearWinHighlights(); // 前回の当たりハイライトを消す
 
 			// スピンのコストを支払う
 			credits -= spinCost;
-			updateCreditsDisplay(); // コイン表示を更新
+			updateCreditsDisplay();
 
 			// 3本すべてのリールのアニメーションを開始
 			reelElements.forEach((reelEl, i) => {
-				setupSpinningReel(i); // アニメーション用のリールを準備
-				reelEl.classList.add('spinning'); // CSSでアニメーションを適用
+				setupSpinningReel(i);
+				reelEl.classList.add('spinning');
 			});
+		}
 
+		/**
+		 * 次のリールを停止する処理
+		 */
+		function stopNextReel() {
+			// 停止対象のリールがない場合は処理を中断
+			if (!isSpinning || reelsToStop >= reels.length) return;
 
-			// 各リールを少しずつタイミングをずらして停止させる
-			const stopIndexes = []; // 各リールの停止位置を保存する配列
-			for (let i = 0; i < reels.length; i++) {
-				// 0.2秒待ってから次のリールを停止する
-				await new Promise(resolve => setTimeout(resolve, 200));
-				// ランダムな位置でリールを停止
-				const stopIndex = Math.floor(Math.random() * reels[i].length);
-				stopIndexes.push(stopIndex);
-				// アニメーションを停止し、最終的な結果を表示
-				reelElements[i].classList.remove('spinning');
-				updateReelDisplay(i, stopIndex);
-			}
+			const reelIndex = reelsToStop;
+			// 停止位置はランダムに決定（目押しの厳密な実装は複雑なため、タイミングを合わせるゲーム性を提供）
+			const stopIndex = Math.floor(Math.random() * reels[reelIndex].length);
+			stopIndexes.push(stopIndex);
 
-			// 当たり判定を実行
-			checkWin(stopIndexes);
+			// 対象リールのアニメーションを停止し、最終的な絵柄を表示
+			reelElements[reelIndex].classList.remove('spinning');
+			updateReelDisplay(reelIndex, stopIndex);
 
-			// スピン終了後の処理
-			isSpinning = false; // スピン中の状態を解除
-			if (credits >= spinCost) {
-				spinButton.disabled = false; // コインがあればボタンを再度有効化
-			} else {
-				resultDisplay.textContent = 'コインが足りません！';
+			// 次に停止するリールのインデックスを更新
+			reelsToStop++;
+
+			// 全てのリールが停止した場合
+			if (reelsToStop >= reels.length) {
+				checkWin(stopIndexes); // 当たり判定を実行
+				isSpinning = false; // スピン状態を解除
+				spinButton.textContent = 'スピン！'; // ボタンのテキストを元に戻す
+				spinButton.classList.remove('stop-mode'); // ボタンのスタイルを元に戻す
+
+				// コインが足りなければ、ボタンを無効化
+				if (credits < spinCost) {
+					spinButton.disabled = true;
+					resultDisplay.textContent = 'コインが足りません！';
+				}
 			}
 		}
 
@@ -355,7 +410,6 @@
 			];
 
 			const winningLines = []; // 当たったラインの情報を保存
-			let hasThreeOfAKind = false; // チェリー以外の3つ揃いがあったか
 
 			// 5つの当たりラインを順番にチェック
 			paylines.forEach((line, lineIndex) => {
@@ -370,31 +424,9 @@
 					if (payoutTable[winKey]) {
 						totalWin += payoutTable[winKey];
 						winningLines.push(lineIndex);
-						// チェリー以外の3つ揃いがあったことを記録
-						if (symbol1 !== '🍒') {
-							hasThreeOfAKind = true;
-						}
 					}
 				}
 			});
-
-			// チェリーの特別ルール判定（チェリー以外の3つ揃いがなかった場合のみ）
-			if (!hasThreeOfAKind) {
-				const cherryLine = [board[0][1], board[1][1], board[2][1]]; // 中段ラインのみで判定
-				const cherryCount = cherryLine.filter(s => s === '🍒').length;
-
-				// 他に当たりがなく、チェリーが2つ揃った場合
-				if (totalWin === 0) {
-					if (cherryCount === 2) {
-						totalWin += cherryPayout.count2;
-						if (!winningLines.includes(1)) winningLines.push(1);
-					} else if (cherryLine[0] === '🍒' && cherryLine[1] !== '🍒' && cherryLine[2] !== '🍒') { // 左端にチェリーが1つだけの場合
-						totalWin += cherryPayout.count1;
-						if (!winningLines.includes(1)) winningLines.push(1);
-					}
-				}
-			}
-
 
 			// 最終的な結果の表示とコインの更新
 			if (totalWin > 0) {
@@ -500,8 +532,15 @@
 
 
 		// --- イベントリスナー ---
-		// スピンボタンがクリックされたら、handleSpin関数を実行する
-		spinButton.addEventListener('click', handleSpin);
+		// ボタンの役割を動的に変更するため、クリックイベントの処理を分岐させる
+		spinButton.addEventListener('click', () => {
+			// スピン中でなければスピンを開始し、スピン中であればリールを停止する
+			if (!isSpinning) {
+				startSpin();
+			} else {
+				stopNextReel();
+			}
+		});
 
 		// --- ゲーム開始 ---
 		// ページの読み込みが完了したら、ゲームを初期化する
