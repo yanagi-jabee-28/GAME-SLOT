@@ -1,297 +1,270 @@
 <!DOCTYPE html>
 <html lang="ja">
-
 <head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>スロットゲーム</title>
-	<script src="https://cdn.tailwindcss.com"></script>
-	<link
-		href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=M+PLUS+Rounded+1c:wght@700&display=swap"
-		rel="stylesheet">
-	<style>
-		body {
-			font-family: 'Inter', 'M PLUS Rounded 1c', sans-serif;
-		}
-
-		.slot-container {
-			background: linear-gradient(145deg, #2a2a2a, #1e1e1e);
-			box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3), inset 0 0 15px rgba(0, 0, 0, 0.5);
-			border: 5px solid #444;
-			border-top-color: #555;
-			border-bottom-color: #333;
-		}
-
-		.reel {
-			width: 100px;
-			height: 120px;
-			background-color: #1a1a1a;
-			border: 3px solid #555;
-			overflow: hidden;
-			position: relative;
-			box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.7);
-		}
-
-		.reel-inner {
-			position: absolute;
-			top: 0;
-			left: 0;
-			width: 100%;
-			/* JavaScriptで動的にトランジションを設定します */
-		}
-
-		.symbol {
-			width: 100%;
-			height: 120px;
-			display: flex;
-			justify-content: center;
-			align-items: center;
-			font-size: 60px;
-		}
-
-		.spin-button {
-			transition: all 0.2s ease-in-out;
-			box-shadow: 0 5px 0 #c0392b;
-		}
-
-		.spin-button:active {
-			transform: translateY(5px);
-			box-shadow: 0 0 0 #c0392b;
-		}
-
-		.spin-button:disabled {
-			background-color: #95a5a6;
-			cursor: not-allowed;
-			box-shadow: 0 5px 0 #7f8c8d;
-		}
-
-		.message-box {
-			transition: all 0.3s ease-in-out;
-		}
-
-		.highlight {
-			animation: highlight-animation 1s ease-in-out;
-		}
-
-		@keyframes highlight-animation {
-
-			0%,
-			100% {
-				transform: scale(1);
-				box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.7);
-			}
-
-			50% {
-				transform: scale(1.05);
-				box-shadow: 0 0 25px 10px #f1c40f;
-			}
-		}
-	</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>フルーツスロットゲーム</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Mochiy Pop One', sans-serif;
+            background-color: #f0f9ff; /* tailwind: bg-sky-50 */
+        }
+        .slot-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 10px;
+            width: 300px;
+            height: 300px;
+            padding: 10px;
+            background-color: #7dd3fc; /* tailwind: bg-sky-300 */
+            border-radius: 20px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1), inset 0 0 15px rgba(255,255,255,0.5);
+        }
+        .slot-cell {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2.75rem; /* 44px */
+            background-color: #f0f9ff; /* tailwind: bg-sky-50 */
+            border-radius: 15px;
+            box-shadow: inset 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .spinning {
+            animation: spin-anim 0.1s linear infinite;
+        }
+        @keyframes spin-anim {
+            0% { transform: translateY(-5px); }
+            50% { transform: translateY(5px); }
+            100% { transform: translateY(-5px); }
+        }
+        .win-line {
+            background-color: #fef08a; /* tailwind: bg-yellow-200 */
+            transform: scale(1.1);
+            box-shadow: 0 0 20px #facc15; /* tailwind: shadow-yellow-400 */
+        }
+        .spin-button {
+            transition: all 0.2s ease;
+            box-shadow: 0 5px 0 #1e40af; /* tailwind: shadow-blue-800 */
+        }
+        .spin-button:active {
+            transform: translateY(3px);
+            box-shadow: 0 2px 0 #1e40af; /* tailwind: shadow-blue-800 */
+        }
+        .spin-button:disabled {
+            background-color: #9ca3af; /* tailwind: bg-gray-400 */
+            box-shadow: 0 5px 0 #4b5563; /* tailwind: shadow-gray-600 */
+            cursor: not-allowed;
+        }
+    </style>
 </head>
+<body class="flex flex-col items-center justify-center min-h-screen p-4">
 
-<body class="bg-gray-800 text-white flex items-center justify-center min-h-screen p-4">
+    <div id="game-container" class="w-full max-w-md p-6 bg-white rounded-3xl shadow-2xl border-4 border-blue-300">
+        <h1 class="text-4xl text-center font-bold text-blue-600 mb-2 tracking-wider">フルーツポップ！</h1>
+        <p class="text-center text-gray-500 mb-6">💎はワイルド、⭐3つでボーナス！</p>
 
-	<div class="w-full max-w-md mx-auto">
-		<h1 class="text-4xl font-bold text-center mb-2 text-yellow-400"
-			style="font-family: 'M PLUS Rounded 1c', sans-serif;">スロットゲーム</h1>
-		<div class="flex justify-between items-center bg-gray-900 px-4 py-2 rounded-t-lg">
-			<div class="text-lg">
-				<span>コイン: </span>
-				<span id="coin-display" class="font-bold text-yellow-400">100</span>
-			</div>
-			<div class="text-lg">
-				<span>ベット: </span>
-				<span class="font-bold text-cyan-400">10</span>
-			</div>
-		</div>
+        <!-- スコアとメッセージ表示 -->
+        <div class="flex justify-between items-center mb-6 p-4 bg-blue-100 rounded-xl">
+            <div>
+                <span class="text-lg text-blue-800">スコア</span>
+                <p id="score" class="text-3xl font-bold text-blue-600">1000</p>
+            </div>
+            <div class="text-right">
+                <span class="text-lg text-blue-800">ベット</span>
+                <p id="bet" class="text-3xl font-bold text-blue-600">10</p>
+            </div>
+        </div>
+        
+        <div id="message-box" class="h-10 text-center text-xl font-bold text-pink-500 mb-4 flex items-center justify-center"></div>
 
-		<!-- スロットマシンの本体 -->
-		<div class="slot-container rounded-b-lg p-6 md:p-8">
-			<!-- リール部分 -->
-			<div class="flex justify-center space-x-4 mb-6">
-				<div id="reel1" class="reel rounded-lg">
-					<div class="reel-inner"></div>
-				</div>
-				<div id="reel2" class="reel rounded-lg">
-					<div class="reel-inner"></div>
-				</div>
-				<div id="reel3" class="reel rounded-lg">
-					<div class="reel-inner"></div>
-				</div>
-			</div>
+        <!-- スロットマシン本体 -->
+        <div class="mx-auto slot-container mb-8">
+            <!-- 3x3のセルがJavaScriptによってここに生成されます -->
+        </div>
 
-			<!-- メッセージ表示エリア -->
-			<div id="message-box"
-				class="message-box text-center h-10 flex items-center justify-center text-xl font-bold mb-6 rounded-lg bg-gray-700/50">
-				スピンボタンを押してね！
-			</div>
+        <!-- 操作ボタン -->
+        <button id="spin-button" class="w-full py-4 text-2xl font-bold text-white bg-blue-500 rounded-xl spin-button hover:bg-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-300">
+            スピン！
+        </button>
+    </div>
 
-			<!-- 操作ボタン -->
-			<div class="flex justify-center">
-				<button id="spin-button"
-					class="spin-button w-full max-w-xs bg-red-600 hover:bg-red-700 text-white font-bold py-4 px-4 rounded-lg text-2xl">
-					スピン！
-				</button>
-			</div>
-		</div>
-	</div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- ゲーム設定 ---
+            const symbols = ['🍒', '🍋', '🍊', '🍇', '🍉', '🍓', '💎', '⭐'];
+            const symbolWeights = [15, 15, 15, 10, 10, 10, 5, 3]; // 各絵柄の出やすさ（合計100）
+            const weightedSymbols = [];
+            symbols.forEach((symbol, index) => {
+                for (let i = 0; i < symbolWeights[index]; i++) {
+                    weightedSymbols.push(symbol);
+                }
+            });
 
-	<script>
-		// DOM要素の取得
-		const coinDisplay = document.getElementById('coin-display');
-		const spinButton = document.getElementById('spin-button');
-		const messageBox = document.getElementById('message-box');
-		const reels = [
-			document.querySelector('#reel1 .reel-inner'),
-			document.querySelector('#reel2 .reel-inner'),
-			document.querySelector('#reel3 .reel-inner')
-		];
+            const WILD_SYMBOL = '💎';
+            const BONUS_SYMBOL = '⭐';
+            const INITIAL_SCORE = 1000;
+            const SPIN_COST = 10;
+            const SPIN_DURATION = 1500; // スピンアニメーションの時間 (ms)
+            const REEL_STOP_DELAY = 200; // 各リールが停止する時間差 (ms)
 
-		// ゲームの設定
-		const symbols = ['🍒', '🍋', '🍊', '🍉', '🔔', '⭐', '７'];
-		const payouts = {
-			'🍒': 20,
-			'🍋': 30,
-			'🍊': 40,
-			'🍉': 50,
-			'🔔': 100,
-			'⭐': 200,
-			'７': 500
-		};
-		const betAmount = 10;
-		const symbolHeight = 120; // .symbolの高さと一致させる
-		const blurSymbolsCount = 20; // 回転中に表示するシンボルの数
+            // 各絵柄の揃った時のスコア
+            const payoutTable = {
+                '🍒': 20, '🍋': 20, '🍊': 20,
+                '🍇': 50, '🍉': 50, '🍓': 50,
+                '💎': 200, // ワイルド絵柄のみで揃った場合
+                '⭐': 100  // ボーナス絵柄3つでのボーナス
+            };
 
-		// ゲームの状態
-		let coins = 100;
-		let isSpinning = false;
+            // 勝利ラインの定義 (セルのインデックス 0-8)
+            const winLines = [
+                [0, 1, 2], [3, 4, 5], [6, 7, 8], // 横
+                [0, 3, 6], [1, 4, 7], [2, 5, 8], // 縦
+                [0, 4, 8], [2, 4, 6]  // 斜め
+            ];
 
-		// 初期化処理
-		function init() {
-			updateCoinDisplay();
-			reels.forEach(reel => {
-				reel.innerHTML = ''; // 中身をクリア
-				reel.appendChild(createSymbolElement(getRandomSymbol()));
-			});
-		}
+            // --- DOM要素 ---
+            const slotContainer = document.querySelector('.slot-container');
+            const spinButton = document.getElementById('spin-button');
+            const scoreDisplay = document.getElementById('score');
+            const messageBox = document.getElementById('message-box');
+            
+            let cells = [];
+            let score = INITIAL_SCORE;
+            let isSpinning = false;
 
-		// コイン表示を更新
-		function updateCoinDisplay() {
-			coinDisplay.textContent = coins;
-		}
+            // --- 初期化処理 ---
+            function init() {
+                // 3x3のセルを生成
+                for (let i = 0; i < 9; i++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('slot-cell');
+                    cell.dataset.index = i;
+                    slotContainer.appendChild(cell);
+                    cells.push(cell);
+                }
+                updateScore(0);
+                spinButton.addEventListener('click', handleSpin);
+            }
 
-		// ランダムなシンボルを取得
-		function getRandomSymbol() {
-			return symbols[Math.floor(Math.random() * symbols.length)];
-		}
+            // --- スピン処理 ---
+            function handleSpin() {
+                if (isSpinning || score < SPIN_COST) return;
 
-		// シンボルを表示するDOM要素を作成
-		function createSymbolElement(symbol) {
-			const div = document.createElement('div');
-			div.className = 'symbol';
-			div.textContent = symbol;
-			return div;
-		}
+                isSpinning = true;
+                spinButton.disabled = true;
+                messageBox.textContent = '';
+                cells.forEach(cell => cell.classList.remove('win-line'));
 
-		// スピン処理
-		function spin() {
-			if (isSpinning) return;
-			if (coins < betAmount) {
-				updateMessage("コインが足りません！", "text-red-500");
-				return;
-			}
+                updateScore(-SPIN_COST);
 
-			isSpinning = true;
-			spinButton.disabled = true;
-			spinButton.textContent = 'スピン中...';
+                const finalSymbols = Array(9).fill(null).map(() => getRandomSymbol());
+                
+                // スピンアニメーション
+                cells.forEach((cell, index) => {
+                    const reelIndex = index % 3;
+                    cell.classList.add('spinning');
+                    const spinInterval = setInterval(() => {
+                        cell.textContent = getRandomSymbol();
+                    }, 100);
 
-			coins -= betAmount;
-			updateCoinDisplay();
-			updateMessage(" ", "text-white"); // メッセージをリセット
+                    setTimeout(() => {
+                        clearInterval(spinInterval);
+                        cell.classList.remove('spinning');
+                        cell.textContent = finalSymbols[index];
+                        
+                        // 全てのリールが停止したら結果をチェック
+                        if (index === 8) {
+                            checkWin(finalSymbols);
+                        }
+                    }, SPIN_DURATION + reelIndex * REEL_STOP_DELAY);
+                });
+            }
 
-			const finalResults = [getRandomSymbol(), getRandomSymbol(), getRandomSymbol()];
-			const longestDuration = (2 + (reels.length - 1) * 0.5) * 1000;
+            // --- 勝利判定 ---
+            function checkWin(finalSymbols) {
+                let totalWin = 0;
+                let winningLinesFound = [];
 
-			reels.forEach((reel, i) => {
-				// 1. 回転用のシンボルストリップを作成（結果が一番上、ダミーがその下）
-				reel.innerHTML = '';
-				// 最終的に表示されるシンボルを一番上に追加
-				reel.appendChild(createSymbolElement(finalResults[i]));
-				// 回転中に通り過ぎるダミーシンボルをその下に追加
-				for (let j = 0; j < blurSymbolsCount; j++) {
-					reel.appendChild(createSymbolElement(getRandomSymbol()));
-				}
+                // 1. ボーナスシンボル（スキャッター）のチェック
+                const bonusCount = finalSymbols.filter(s => s === BONUS_SYMBOL).length;
+                if (bonusCount >= 3) {
+                    const bonusWin = payoutTable[BONUS_SYMBOL] * bonusCount;
+                    totalWin += bonusWin;
+                    messageBox.textContent = `⭐ボーナス！ +${bonusWin}`;
+                    // ボーナスシンボルをハイライト
+                    finalSymbols.forEach((symbol, index) => {
+                        if (symbol === BONUS_SYMBOL) {
+                            winningLinesFound.push(index);
+                        }
+                    });
+                }
 
-				// 2. アニメーション開始位置（一番下のダミーシンボルが見える位置）に設定
-				reel.style.transition = 'none';
-				const initialPosition = -(blurSymbolsCount * symbolHeight);
-				reel.style.top = `${initialPosition}px`;
+                // 2. 通常のペイラインのチェック
+                winLines.forEach(line => {
+                    const lineSymbols = line.map(index => finalSymbols[index]);
+                    const firstSymbol = lineSymbols[0];
+                    const secondSymbol = lineSymbols[1];
+                    const thirdSymbol = lineSymbols[2];
 
-				// ブラウザにリセットを強制的に適用させる
-				reel.offsetHeight;
+                    let winSymbol = null;
+                    
+                    // ワイルドを考慮した判定
+                    const symbolsOnLine = lineSymbols.filter(s => s !== WILD_SYMBOL);
+                    
+                    if (symbolsOnLine.length <= 1) { // 全てワイルド、または2つワイルド＋1絵柄
+                        winSymbol = symbolsOnLine[0] || WILD_SYMBOL; // 全てワイルドの場合はワイルドが勝ち絵柄
+                    } else if (symbolsOnLine.every(s => s === symbolsOnLine[0])) { // ワイルド以外の絵柄が全て同じ
+                        winSymbol = symbolsOnLine[0];
+                    }
 
-				// 3. アニメーション（トランジション）を設定
-				const spinDuration = 2 + i * 0.5; // リールごとに停止タイミングをずらす
-				reel.style.transition = `top ${spinDuration}s cubic-bezier(0.25, 0.1, 0.25, 1)`; // イーズアウト（だんだん遅くなる）
+                    if (winSymbol) {
+                        const winAmount = payoutTable[winSymbol];
+                        totalWin += winAmount;
+                        line.forEach(index => winningLinesFound.push(index));
+                    }
+                });
 
-				// 4. 最終的な停止位置（top: 0、一番上のシンボルが見える位置）を設定してアニメーションを開始
-				reel.style.top = '0px';
-			});
+                if (totalWin > 0) {
+                    updateScore(totalWin);
+                    if (!messageBox.textContent) { // ボーナスメッセージがなければ
+                        messageBox.textContent = `ヒット！ +${totalWin}`;
+                    }
+                    // 重複を除いてハイライト
+                    [...new Set(winningLinesFound)].forEach(index => {
+                        cells[index].classList.add('win-line');
+                    });
+                } else {
+                     messageBox.textContent = '';
+                }
 
-			// 全てのリールが停止した後に結果を判定
-			setTimeout(() => {
-				checkResult(finalResults);
-			}, longestDuration);
-		}
+                isSpinning = false;
+                spinButton.disabled = false;
+                
+                if (score < SPIN_COST) {
+                    messageBox.textContent = "スコアが足りません！";
+                    spinButton.disabled = true;
+                }
+            }
 
-		// 結果を判定
-		function checkResult(results) {
-			const [r1, r2, r3] = results;
-			const parentReels = reels.map(r => r.parentElement);
+            // --- ユーティリティ関数 ---
+            function getRandomSymbol() {
+                return weightedSymbols[Math.floor(Math.random() * weightedSymbols.length)];
+            }
 
-			parentReels.forEach(pr => pr.classList.remove('highlight'));
+            function updateScore(amount) {
+                score += amount;
+                scoreDisplay.textContent = score;
+            }
 
-			if (r1 === r2 && r2 === r3) {
-				const payout = payouts[r1];
-				coins += payout;
-				updateMessage(`大当たり！ ${payout}コイン獲得！`, "text-yellow-400");
-				parentReels.forEach(pr => pr.classList.add('highlight'));
-			} else {
-				updateMessage("残念、はずれ...", "text-gray-400");
-			}
-
-			updateCoinDisplay();
-			isSpinning = false;
-			spinButton.disabled = false;
-			spinButton.textContent = 'スピン！';
-
-			if (coins < betAmount) {
-				updateMessage("コインがなくなりました...", "text-red-500");
-				spinButton.disabled = true;
-			}
-
-			// アニメーション後に不要な要素を削除してDOMを軽くする
-			reels.forEach((reel, i) => {
-				reel.style.transition = 'none';
-				const finalSymbol = results[i];
-				reel.innerHTML = ''; // 中身をクリア
-				reel.appendChild(createSymbolElement(finalSymbol));
-				reel.style.top = '0';
-			});
-		}
-
-		// メッセージを更新
-		function updateMessage(text, colorClass) {
-			messageBox.textContent = text;
-			messageBox.className = `message-box text-center h-10 flex items-center justify-center text-xl font-bold mb-6 rounded-lg bg-gray-700/50 ${colorClass}`;
-		}
-
-		// イベントリスナーを設定
-		spinButton.addEventListener('click', spin);
-
-		// ゲーム開始
-		init();
-	</script>
+            // --- ゲーム開始 ---
+            init();
+        });
+    </script>
 </body>
-
 </html>
