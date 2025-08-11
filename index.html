@@ -288,6 +288,17 @@
 		let isSpinning = false; // 現在スピン中かどうかを示すフラグ
 		let reelsToStop = 0; // 次に停止するリールのインデックス (0, 1, 2)
 		let stopIndexes = []; // 各リールの停止位置を保存する配列
+		// リール毎のアニメーション状態
+		let reelStates = []; // {speed, initialSpeed, position, spinning, decel, decelStartTime, decelDuration, stopIndex, finished}
+		let animationFrameId = null; // requestAnimationFrame ID
+		// 停止挙動調整用設定（ここを変えるとチューニングしやすい）
+		const spinConfig = {
+			decelBase: 320,          // 最初のリールの減速時間(ms) 目押し反応性重視でさらに短縮
+			decelIncrement: 80,      // 後ろのリールも少しだけ長く
+			extraCyclesBase: 0,       // 余分周回なし -> 押した位置と結果のズレ最小化
+			extraCyclesIncrement: 0,
+			minTotalCycles: 0        // 0周許可（そのまま減速に移行）
+		};
 
 		// --- ゲームロジック ---
 
@@ -326,44 +337,116 @@
 			updateCreditsDisplay();
 
 			// 3本すべてのリールのアニメーションを開始
+			reelStates = [];
 			reelElements.forEach((reelEl, i) => {
 				setupSpinningReel(i);
-				reelEl.classList.add('spinning');
+				// 初速(ピクセル/秒)を少しバラつかせる
+				const baseSpeed = 1800; // px/s 目安
+				const speedVariation = Math.random() * 300 - 150; // ±150
+				reelStates[i] = {
+					position: 0, // 現在のスクロール位置(px)
+					speed: baseSpeed + speedVariation,
+					initialSpeed: baseSpeed + speedVariation,
+					spinning: true,
+					decel: false,
+					decelStartTime: 0,
+					decelDuration: 0,
+					stopIndex: null,
+					finished: false
+				};
 			});
+			// アニメーションループ開始
+			if (animationFrameId) cancelAnimationFrame(animationFrameId);
+			lastTimestamp = performance.now();
+			animationFrameId = requestAnimationFrame(animateReels);
 		}
 
 		/**
 		 * 次のリールを停止する処理
 		 */
 		function stopNextReel() {
-			// 停止対象のリールがない場合は処理を中断
 			if (!isSpinning || reelsToStop >= reels.length) return;
-
 			const reelIndex = reelsToStop;
-			// 停止位置はランダムに決定（目押しの厳密な実装は複雑なため、タイミングを合わせるゲーム性を提供）
-			const stopIndex = Math.floor(Math.random() * reels[reelIndex].length);
+			const state = reelStates[reelIndex];
+			if (!state || state.decel) return; // 既に減速中
+			// 現在の表示状態から中段にあるシンボルを取得してそれを狙い通り停止位置にする
+			const cellH = 80;
+			const rLen = reels[reelIndex].length;
+			const loopH = rLen * cellH;
+			const currentOff = state.position % loopH; // 先頭からのピクセル
+			const topIndex = Math.floor(currentOff / cellH) % rLen; // 現在一番上に表示されているセル
+			const middleIndex = (topIndex + 1) % rLen; // 中段に表示されているセル
+			const stopIndex = middleIndex; // 目押し: 押した瞬間の中段シンボルで最終停止
 			stopIndexes.push(stopIndex);
-
-			// 対象リールのアニメーションを停止し、最終的な絵柄を表示
-			reelElements[reelIndex].classList.remove('spinning');
-			updateReelDisplay(reelIndex, stopIndex);
-
-			// 次に停止するリールのインデックスを更新
+			// 減速パラメータ設定
+			state.decel = true;
+			state.decelStartTime = performance.now();
+			state.decelDuration = spinConfig.decelBase + reelIndex * spinConfig.decelIncrement; // 短めの減速
+			state.stopIndex = stopIndex;
+			// 補間用ターゲット位置を計算（最終的に middle=stopIndex になるよう top=(stopIndex-1) を一番上に合わせる）
+			const calcCellH = 80;
+			const calcLen = reels[reelIndex].length;
+			const calcLoopH = calcLen * calcCellH;
+			state.startPosition = state.position; // 現在位置
+			const calcCurrentOff = state.startPosition % calcLoopH;
+			const targetOffsetInLoop = ((stopIndex - 1 + calcLen) % calcLen) * calcCellH; // 上段が来るべき位置
+			let deltaOffset = targetOffsetInLoop - calcCurrentOff;
+			if (deltaOffset < 0) deltaOffset += calcLoopH;
+			// 余分に何周か回してから止める (演出) -> リール後方ほど多め
+			let extraCycles = spinConfig.extraCyclesBase + reelIndex * spinConfig.extraCyclesIncrement;
+			if (extraCycles < spinConfig.minTotalCycles) extraCycles = spinConfig.minTotalCycles;
+			const totalDelta = deltaOffset + extraCycles * calcLoopH;
+			state.finalPosition = state.startPosition + totalDelta;
 			reelsToStop++;
+		}
 
-			// 全てのリールが停止した場合
-			if (reelsToStop >= reels.length) {
-				checkWin(stopIndexes); // 当たり判定を実行
-				isSpinning = false; // スピン状態を解除
-				spinButton.textContent = 'スピン！'; // ボタンのテキストを元に戻す
-				spinButton.classList.remove('stop-mode'); // ボタンのスタイルを元に戻す
-
-				// コインが足りなければ、ボタンを無効化
+		// 全リールの減速完了を監視する補助
+		function tryFinishSpin() {
+			const allFinished = reelStates.every(s => s.finished);
+			if (allFinished) {
+				cancelAnimationFrame(animationFrameId);
+				animationFrameId = null;
+				checkWin(stopIndexes);
+				isSpinning = false;
+				spinButton.textContent = 'スピン！';
+				spinButton.classList.remove('stop-mode');
 				if (credits < spinCost) {
 					spinButton.disabled = true;
 					resultDisplay.textContent = 'コインが足りません！';
 				}
 			}
+		}
+
+		let lastTimestamp = 0;
+		function animateReels(timestamp) {
+			const dt = (timestamp - lastTimestamp) / 1000; // 秒 (等速区間用)
+			lastTimestamp = timestamp;
+			reelStates.forEach((state, i) => {
+				if (state.finished) return;
+				const reelEl = reelElements[i].querySelector('.reel-inner');
+				if (!reelEl) return;
+				if (!state.decel) {
+					// 等速回転
+					state.position += state.speed * dt;
+				} else {
+					// 補間による減速 (easeOutCubic)
+					const progress = Math.min(1, (timestamp - state.decelStartTime) / state.decelDuration);
+					const ease = 1 - Math.pow(1 - progress, 3);
+					state.position = state.startPosition + (state.finalPosition - state.startPosition) * ease;
+					if (progress >= 1) {
+						// ポジションを最終位置に正規化して静止表示へ
+						updateReelDisplay(i, state.stopIndex);
+						state.finished = true;
+					}
+				}
+				const loopHeight = reels[i].length * 80;
+				if (!state.finished) {
+					const wrapped = state.position % loopHeight;
+					reelEl.style.transform = `translateY(${-wrapped}px)`;
+				}
+			});
+			tryFinishSpin();
+			if (animationFrameId) animationFrameId = requestAnimationFrame(animateReels);
 		}
 
 		/**
