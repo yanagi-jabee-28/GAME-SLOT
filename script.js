@@ -5,6 +5,127 @@
  */
 
 /**
+ * UI要素の管理とDOM操作を担当するクラス。
+ * SlotGameクラスからUIに関する責務を分離し、コードの見通しと保守性を向上させます。
+ */
+class UIManager {
+    /**
+     * UIManagerクラスのコンストラクタ。
+     * @param {object} config - ゲームの設定オブジェクト
+     */
+    constructor(config) {
+        this.config = config;
+        this.elements = {}; // 取得したDOM要素を格納するオブジェクト
+        this.getElements();
+    }
+
+    /**
+     * 必要なDOM要素を取得し、内部プロパティに格納します。
+     */
+    getElements() {
+        this.elements.slotContainer = document.querySelector(this.config.selectors.slotMachine);
+        this.elements.actionBtn = document.querySelector(this.config.selectors.actionBtn);
+        this.elements.modeBtn = document.querySelector(this.config.selectors.modeBtn);
+    }
+
+    /**
+     * スロットコンテナ内の全ての子要素をクリアします。
+     */
+    clearSlotContainer() {
+        this.elements.slotContainer.innerHTML = '';
+    }
+
+    /**
+     * 新しいリール要素（div.reel）を作成します。
+     * @returns {HTMLElement} 作成されたリール要素
+     */
+    createReelElement() {
+        const reelElement = document.createElement('div');
+        reelElement.className = 'reel';
+        return reelElement;
+    }
+
+    /**
+     * シンボルを格納するコンテナ要素（div.symbols）を作成します。
+     * @returns {HTMLElement} 作成されたシンボルコンテナ要素
+     */
+    createSymbolsElement() {
+        const symbolsElement = document.createElement('div');
+        symbolsElement.className = 'symbols';
+        return symbolsElement;
+    }
+
+    /**
+     * 個々のシンボル要素（div.symbol）を作成します。
+     * @param {string} symbol - 表示するシンボルのテキスト
+     * @returns {HTMLElement} 作成されたシンボル要素
+     */
+    createSymbolElement(symbol) {
+        const symbolElement = document.createElement('div');
+        symbolElement.className = 'symbol';
+        symbolElement.textContent = symbol;
+        if (symbol === 'BAR') {
+            symbolElement.classList.add('bar');
+        }
+        return symbolElement;
+    }
+
+    /**
+     * リール要素をスロットコンテナに追加します。
+     * @param {HTMLElement} reelElement - 追加するリール要素
+     */
+    appendReelToSlotContainer(reelElement) {
+        this.elements.slotContainer.appendChild(reelElement);
+    }
+
+    /**
+     * 指定されたリール要素のY軸方向のtransformスタイルを設定します。
+     * @param {HTMLElement} element - スタイルを設定するリール要素
+     * @param {number} yPosition - 設定するY軸の位置（ピクセル単位）
+     */
+    setReelTransform(element, yPosition) {
+        element.style.transform = `translateY(${yPosition}px)`;
+    }
+
+    /**
+     * アクションボタンのテキストを設定します。
+     * @param {string} text - 設定するテキスト
+     */
+    setActionBtnText(text) {
+        this.elements.actionBtn.textContent = text;
+    }
+
+    /**
+     * アクションボタンのdisabledプロパティを設定します。
+     * @param {boolean} disabled - trueの場合ボタンを無効化、falseの場合有効化
+     */
+    setActionBtnDisabled(disabled) {
+        this.elements.actionBtn.disabled = disabled;
+    }
+
+    /**
+     * モードボタンのテキストを設定します。
+     * @param {string} text - 設定するテキスト
+     */
+    setModeBtnText(text) {
+        this.elements.modeBtn.textContent = text;
+    }
+
+    /**
+     * 指定されたHTML要素の現在のY軸方向の`transform`変位量を取得します。
+     * `getComputedStyle`と`DOMMatrix`を使用して、正確なピクセル値を取得します。
+     * @param {HTMLElement} element - Y軸変位量を取得する対象のHTML要素
+     * @returns {number} Y軸の変位量 (ピクセル単位)。transformが設定されていない場合は0を返します。
+     */
+    getCurrentTranslateY(element) {
+        const style = window.getComputedStyle(element);
+        const matrix = new DOMMatrix(style.transform);
+        return matrix.m42;
+    }
+}
+
+
+/**
  * スロットゲーム全体を管理するクラス。
  * ゲームの状態、DOM要素、アニメーションロジックをカプセル化します。
  */
@@ -16,18 +137,18 @@ class SlotGame {
      * @param {object} config - ゲームの動作を定義する設定オブジェクト
      */
     constructor(element, config) {
-        // --- DOM要素の参照を保持 ---
-        this.slotContainer = element; // スロットリールを格納するコンテナ
-        this.actionBtn = document.getElementById('actionBtn'); // スタート/ストップボタン
-        this.modeBtn = document.getElementById('modeBtn');     // モード切り替えボタン
-
-        // --- ゲーム設定の保持 ---
         this.config = config;
+        this.ui = new UIManager(config); // UIManagerのインスタンスを生成
+
+        // --- DOM要素の参照を保持 ---
+        this.slotContainer = this.ui.elements.slotContainer; // スロットリールを格納するコンテナ
+        this.actionBtn = this.ui.elements.actionBtn; // スタート/ストップボタン
+        this.modeBtn = this.ui.elements.modeBtn;     // モード切り替えボタン
 
         // --- ゲームの状態管理変数 ---
         this.reels = [];             // 各リールのDOM要素、シンボルデータ、アニメーション状態を格納する配列
         this.isSpinning = false;     // ゲーム全体が現在回転中であるかを示すフラグ (true: 回転中, false: 停止中)
-        this.isAutoMode = true;      // 現在のゲームモード (true: 自動停止モード, false: 目押しモード)
+        this.isAutoMode = config.initialIsAutoMode;      // 現在のゲームモード (true: 自動停止モード, false: 目押しモード)
         this.manualStopCount = 0;    // 目押しモード時に、プレイヤーが停止させたリールの数をカウント
 
         // ゲームの初期化処理を開始
@@ -49,37 +170,27 @@ class SlotGame {
      * 無限スクロールを実現するため、シンボルリストは2周分生成されます。
      */
     buildReels() {
-        this.slotContainer.innerHTML = ''; // 既存のリールがあればクリア
+        this.ui.clearSlotContainer(); // 既存のリールがあればクリア
 
         for (let i = 0; i < this.config.reelCount; i++) {
             // 各リールを構成するHTML要素を作成
-            const reelElement = document.createElement('div');
-            reelElement.className = 'reel'; // CSSクラスを適用
-
-            const symbolsElement = document.createElement('div');
-            symbolsElement.className = 'symbols'; // CSSクラスを適用
+            const reelElement = this.ui.createReelElement();
+            const symbolsElement = this.ui.createSymbolsElement();
 
             // 設定データから現在のリールに表示するシンボル配列を取得
             const reelSymbols = this.config.reelsData[i];
             const fragment = document.createDocumentFragment(); // DOM操作のパフォーマンス向上のためDocumentFragmentを使用
 
             // シンボルを2周分生成し、リールに追加
-            for (let j = 0; j < reelSymbols.length * 2; j++) {
+            for (let j = 0; j < reelSymbols.length * this.config.symbolDuplicationFactor; j++) {
                 const symbol = reelSymbols[j % reelSymbols.length]; // シンボル配列をループ
-                const symbolElement = document.createElement('div');
-                symbolElement.className = 'symbol';
-                symbolElement.textContent = symbol;
-
-                // 特定のシンボル（例: BAR）には追加のスタイルを適用
-                if (symbol === 'BAR') {
-                    symbolElement.classList.add('bar');
-                }
+                const symbolElement = this.ui.createSymbolElement(symbol);
                 fragment.appendChild(symbolElement);
             }
 
             symbolsElement.appendChild(fragment);
             reelElement.appendChild(symbolsElement);
-            this.slotContainer.appendChild(reelElement);
+            this.ui.appendReelToSlotContainer(reelElement);
 
             // 生成したリール要素と関連データを内部管理用の配列に格納
             this.reels.push({
@@ -103,13 +214,13 @@ class SlotGame {
             // 設定された初期位置が不正な場合のバリデーション
             if (positionIndex < 0 || positionIndex >= reel.symbols.length) {
                 console.error(`リール${index}の初期位置(${positionIndex})が無効です。0に設定します。`);
-                reel.element.style.transform = 'translateY(0px)'; // 安全なデフォルト値
+                this.ui.setReelTransform(reel.element, 0); // 安全なデフォルト値
                 return;
             }
             // 指定されたシンボルがリールの一番上に表示されるようにY座標を計算
             // 例: positionIndexが0なら0px、1なら-80px (シンボル1つ分上に移動)
             const yPosition = -positionIndex * this.config.symbolHeight;
-            reel.element.style.transform = `translateY(${yPosition}px)`;
+            this.ui.setReelTransform(reel.element, yPosition);
         });
     }
 
@@ -133,9 +244,9 @@ class SlotGame {
      */
     bindEvents() {
         // スタート/ストップボタンがクリックされたらhandleActionメソッドを実行
-        this.actionBtn.addEventListener('click', () => this.handleAction());
+        this.ui.elements.actionBtn.addEventListener('click', () => this.handleAction());
         // モード切り替えボタンがクリックされたらtoggleModeメソッドを実行
-        this.modeBtn.addEventListener('click', () => this.toggleMode());
+        this.ui.elements.modeBtn.addEventListener('click', () => this.toggleMode());
     }
 
     /**
@@ -158,7 +269,7 @@ class SlotGame {
         if (this.isSpinning) return; // リールが回転中の場合はモード変更を許可しない
         this.isAutoMode = !this.isAutoMode; // モードフラグを反転
         // ボタンのテキストを現在のモードに合わせて更新
-        this.modeBtn.textContent = `モード: ${this.isAutoMode ? '自動' : '目押し'}`;
+        this.ui.setModeBtnText(`モード: ${this.isAutoMode ? '自動' : '目押し'}`);
     }
 
     /**
@@ -180,15 +291,15 @@ class SlotGame {
 
         if (this.isAutoMode) {
             // 自動モードの場合: スタートボタンを一時的に無効化し、自動停止タイマーを設定
-            this.actionBtn.disabled = true;
+            this.ui.setActionBtnDisabled(true);
             this.config.autoStopTimings.forEach((time, i) => {
                 // 停止タイミングにランダムな揺らぎを追加し、単調さをなくす
-                const randomTime = time + (Math.random() * 1000 - 500);
+                const randomTime = time + (Math.random() * this.config.autoStopTimeRandomness * 2 - this.config.autoStopTimeRandomness);
                 setTimeout(() => this.stopReel(i), randomTime);
             });
         } else {
             // 目押しモードの場合: スタートボタンのテキストを「停止」に変更
-            this.actionBtn.textContent = '⏸ 停止';
+            this.ui.setActionBtnText('⏸ 停止');
         }
     }
 
@@ -204,7 +315,7 @@ class SlotGame {
 
         // 現在のY座標を取得し、回転方向に応じて内部的な位置`pos`を初期化
         // `pos`は、リールの全高を考慮した無限スクロールのための仮想的な位置です。
-        const currentY = this.getCurrentTranslateY(reel.element);
+        const currentY = this.ui.getCurrentTranslateY(reel.element);
         let pos = this.config.reverseRotation ? (currentY + reel.totalHeight) : -currentY;
 
         const startTime = performance.now(); // アニメーション開始時刻を記録
@@ -249,7 +360,7 @@ class SlotGame {
 
         cancelAnimationFrame(reel.animationFrameId); // 回転アニメーションをキャンセル
 
-        const currentY = this.getCurrentTranslateY(reel.element); // 現在のY座標を取得
+        const currentY = this.ui.getCurrentTranslateY(reel.element); // 現在のY座標を取得
 
         // 現在のY座標から、次のシンボルでぴったり止まるための残りの距離を計算
         let remainder; // シンボル境界からの残りピクセル数
@@ -309,7 +420,7 @@ class SlotGame {
 
         // 最後のリールを停止させたら、誤操作防止のためにボタンを無効化
         if (this.manualStopCount === this.config.reelCount) {
-            this.actionBtn.disabled = true;
+            this.ui.setActionBtnDisabled(true);
         }
     }
 
@@ -321,8 +432,8 @@ class SlotGame {
         // 全てのリールが回転中でないことを確認
         if (this.reels.every(r => !r.spinning)) {
             this.isSpinning = false; // ゲーム全体が停止状態であることを示す
-            this.actionBtn.textContent = '▶ スタート'; // ボタンテキストを「スタート」に戻す
-            this.actionBtn.disabled = false; // ボタンを有効化
+            this.ui.setActionBtnText('▶ スタート'); // ボタンテキストを「スタート」に戻す
+            this.ui.setActionBtnDisabled(false); // ボタンを有効化
         }
     }
 
@@ -357,41 +468,14 @@ class SlotGame {
     easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
 }
 
-// --- ゲーム設定オブジェクト ---
-// このオブジェクトの値を変更することで、ゲームの挙動やバランスを調整できます。
-const gameConfig = {
-    reelCount: 3,          // リールの数 (例: 3x3スロットなので3)
-    symbolHeight: 80,      // 1シンボルの高さ (ピクセル単位)。CSSの.symbolのheightと一致させる必要があります。
-    reelsData: [
-        // 各リールに表示されるシンボルの配列を定義します。
-        // この配列の並び順が、リールの回転時に表示されるシンボルの順序となります。
-        // 配列の末尾は、初期表示や特定の演出のために意図的に同じシンボルで揃えられています。
-        ['🍑', '🍋', '🍎', '🍑', '🍋', '💎', '🍉', '🍑', '🍋', 'BAR', '🍒', '🍎', '🍑', '🍋', '🍉', '🍑', '🍋', '7️⃣', '🍇', '7️⃣', '🍇'], // 左リール (reel0) のシンボル構成
-        ['🍑', '🍒', '🍋', '🍑', '🍎', '💎', '🍉', '🍋', '🍑', '🍒', 'BAR', '🍒', '🍋', '🍑', '🍉', '🍋', '🍑', '🍇', '7️⃣', '🍇', '🍋'], // 中央リール (reel1) のシンボル構成
-        ['🍋', '🍎', '🍑', '🍋', '🍉', '💎', '🍑', '🍋', '🍒', 'BAR', '🍑', '🍋', '🍉', '🍎', '🍑', '🍋', '🍇', '7️⃣', '🍇', '7️⃣', '🍑']  // 右リール (reel2) のシンボル構成
-    ],
-    // ゲーム開始時の各リールの初期表示位置を、reelsData配列のインデックスで指定します。
-    // ここで指定されたインデックスのシンボルが、リールの一番上に表示された状態でゲームが始まります。
-    initialReelPositions: [17, 17, 17],
-    // 「自動」モードの際に、各リールがスピンを開始してから自動的に停止するまでの時間（ミリ秒）です。
-    // [左リール, 中央リール, 右リール] の順で設定します。
-    autoStopTimings: [2000, 3000, 4000],
-    autoSpeed: 20,         // 自動モード時のリール回転速度 (ピクセル/フレーム)。値を大きくすると速くなる。
-    manualSpeed: 10,       // 目押しモード時のリール回転速度 (ピクセル/フレーム)。自動モードより遅めに設定されることが多い。
-    accelerationTime: 1000, // スピン開始から最高速度に到達するまでの時間（ミリ秒）。値を大きくすると加速が緩やかになる。
-    minStopAnimTime: 100,  // リールが停止する際のアニメーション（「ビタ止まり」を防ぐための滑らかな動き）の最短時間（ミリ秒）。
-    maxStopAnimTime: 1000, // 停止アニメーションの最長時間（ミリ秒）。
-    reverseRotation: true, // リールの回転方向 (true: 下から上へ逆回転, false: 上から下へ正回転)
-};
-
-// --- ゲームインスタンスの生成と起動 ---
-// DOMContentLoadedイベント: HTMLの読み込みと解析が完了した時点で実行されます。
-// これにより、JavaScriptがHTML要素にアクセスできるようになります。
+// DOMが完全に読み込まれたらゲームを開始する
 document.addEventListener('DOMContentLoaded', () => {
-    // スロットマシンのコンテナ要素を取得
-    const slotMachineElement = document.getElementById('slot-machine');
-    // 要素が存在することを確認してからゲームを初期化
+    // gameConfigがグローバルに存在することを想定
+    // もし存在しない場合は、ここでconfig.jsから読み込むか、定義する必要がある
+    const slotMachineElement = document.querySelector(gameConfig.selectors.slotMachine);
     if (slotMachineElement) {
         new SlotGame(slotMachineElement, gameConfig);
+    } else {
+        console.error('スロットマシンの要素が見つかりません。セレクターを確認してください:', gameConfig.selectors.slotMachine);
     }
 });

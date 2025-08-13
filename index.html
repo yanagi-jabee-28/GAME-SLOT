@@ -35,8 +35,11 @@
         <button id="modeBtn">モード: 自動</button>
     </div>
 
-    <!-- 外部JavaScriptファイルの読み込み: ゲームのロジックを定義するscript.jsを読み込みます -->
+    <!-- 外部JavaScriptファイルの読み込み -->
     <!-- defer属性: HTMLの解析をブロックせず、ドキュメントの解析が完了した後にスクリプトを実行します -->
+    <!-- config.js: ゲームの設定ファイルを先に読み込みます -->
+    <script src="config.js" defer></script>
+    <!-- script.js: ゲームのロジック本体を次に読み込みます -->
     <script src="script.js" defer></script>
 
 </body>
