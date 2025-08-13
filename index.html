@@ -139,7 +139,7 @@
 
 		// アニメーション関連
 		const REVERSE_ROTATION = true; // trueで逆回転（下から上）、falseで正回転（上から下）
-		const maxSpeed = 7.5; // 最高速度（1フレームあたりのピクセル移動量）
+		let maxSpeed = 7.5; // 最高速度（1フレームあたりのピクセル移動量）
 		const accelerationTime = 1000; // 最高速度に達するまでの時間(ms)
 		const MIN_STOP_ANIMATION_TIME = 100; // 停止アニメーションの最短時間(ms)
 		const MAX_STOP_ANIMATION_TIME = 1000; // 停止アニメーションの最長時間(ms)
@@ -300,6 +300,13 @@
 		function startGame() {
 			// いずれかのリールが回転中なら処理しない
 			if (spinning.some(s => s)) return;
+
+			// モードに応じて回転速度を設定
+			if (modeAuto) {
+				maxSpeed = 30; // 自動モードの速度
+			} else {
+				maxSpeed = 7.5; // 目押しモードの速度
+			}
 
 			stopCount = 0;
 			for (let i = 0; i < REEL_COUNT; i++) {
