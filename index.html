@@ -118,8 +118,9 @@
 		const SYMBOL_HEIGHT = 80; // px単位。CSSの.symbolのheightと合わせる
 
 		// 各リールのシンボル構成を定義します。
+		// 全てのリールで '7️⃣', '🍇', '7️⃣' の並びが最後に来るように統一し、管理を容易にしています。
 		const reelsData = [
-			// 左リール: A=🍑, B=🍋, C=🍎, D=💎, E=🍉, F='BAR', G=🍒, H=🍇, 7=7️⃣
+			// 左リール
 			['🍑', '🍋', '🍎', '🍑', '🍋', '💎', '🍉', '🍑', '🍋', 'BAR', '🍒', '🍎', '🍑', '🍋', '🍉', '🍑', '🍋', '7️⃣', '🍇', '7️⃣', '🍇'],
 			// 中央リール
 			['🍑', '🍒', '🍋', '🍑', '🍎', '💎', '🍉', '🍋', '🍑', '🍒', 'BAR', '🍒', '🍋', '🍑', '🍉', '🍋', '🍑', '🍇', '7️⃣', '🍇', '🍋'],
@@ -129,13 +130,15 @@
 
 		// 各リールの初期表示位置（シンボル配列のインデックス）を定義します。
 		// このインデックスのシンボルが、リールの一番上に表示されるように設定されます。
-		const initialReelPositions = [17, 17, 17]; // 左: 18番目, 中央: 18番目, 右: 18番目から表示
+		// 全てのリールで 7️⃣ が一番上に来るように設定 (18番目のシンボル)
+		const initialReelPositions = [17, 17, 17];
 
 		// リール関連
 		const REEL_COUNT = 3; // リールの数
 		const AUTO_STOP_TIMINGS = [1500, 2500, 3500]; // 自動停止モードの各リール停止時間(ms)
 
 		// アニメーション関連
+		const REVERSE_ROTATION = true; // trueで逆回転（下から上）、falseで正回転（上から下）
 		const maxSpeed = 7.5; // 最高速度（1フレームあたりのピクセル移動量）
 		const accelerationTime = 1000; // 最高速度に達するまでの時間(ms)
 		const MIN_STOP_ANIMATION_TIME = 100; // 停止アニメーションの最短時間(ms)
@@ -184,9 +187,19 @@
 		 */
 		function startReel(index) {
 			spinning[index] = true;
-			let pos = parseFloat(reels[index].style.top.replace('px', '')) * -1 || 0;
-			const startTime = performance.now();
 			const currentReelSymbols = reelsData[index];
+			const totalHeight = currentReelSymbols.length * SYMBOL_HEIGHT;
+			let pos;
+
+			if (REVERSE_ROTATION) {
+				// 逆回転の場合のpos初期化: topは[-totalHeight, 0]なので、posは[0, totalHeight)
+				pos = (parseFloat(reels[index].style.top.replace('px', '')) || 0) + totalHeight;
+			} else {
+				// 正回転の場合のpos初期化: topは[-totalHeight, 0]なので、posは[0, totalHeight)
+				pos = parseFloat(reels[index].style.top.replace('px', '')) * -1 || 0;
+			}
+
+			const startTime = performance.now();
 
 			function animate(currentTime) {
 				if (!spinning[index]) return;
@@ -199,8 +212,17 @@
 				} else {
 					currentSpeed = maxSpeed;
 				}
-				pos = (pos + currentSpeed) % (currentReelSymbols.length * SYMBOL_HEIGHT);
-				reels[index].style.top = -pos + 'px';
+
+				// posの更新は共通
+				pos = (pos + currentSpeed) % totalHeight;
+
+				if (REVERSE_ROTATION) {
+					// 逆回転のtop計算: posが[0, totalHeight)で増加すると、topは[-totalHeight, 0)で増加
+					reels[index].style.top = (pos - totalHeight) + 'px';
+				} else {
+					// 正回転のtop計算: posが[0, totalHeight)で増加すると、topは(0, -totalHeight]で減少
+					reels[index].style.top = -pos + 'px';
+				}
 				animationFrameId[index] = requestAnimationFrame(animate);
 			}
 			requestAnimationFrame(animate);
@@ -216,8 +238,18 @@
 			const currentReelSymbols = reelsData[index];
 			let currentTop = parseInt(reels[index].style.top || '0');
 			const totalSymbolHeight = currentReelSymbols.length * SYMBOL_HEIGHT;
-			let posMod = ((-currentTop) % totalSymbolHeight + totalSymbolHeight) % totalSymbolHeight;
-			let remainder = posMod % SYMBOL_HEIGHT;
+
+			let remainder;
+			if (REVERSE_ROTATION) {
+				// 逆回転の場合: topは[-totalHeight, 0]なので、posは[0, totalHeight)
+				const pos = currentTop + totalSymbolHeight;
+				remainder = pos % SYMBOL_HEIGHT;
+			} else {
+				// 正回転の場合: topは[-totalHeight, 0]なので、posは[0, totalHeight)
+				let posMod = ((-currentTop) % totalSymbolHeight + totalSymbolHeight) % totalSymbolHeight;
+				remainder = posMod % SYMBOL_HEIGHT;
+			}
+
 			let distanceToNext = (SYMBOL_HEIGHT - remainder) % SYMBOL_HEIGHT;
 
 			let timeNeeded = Math.ceil(distanceToNext / maxSpeed) * 20;
@@ -225,13 +257,26 @@
 
 			const start = performance.now();
 			const startTop = currentTop;
-			const targetTop = currentTop - distanceToNext;
+			let targetTop;
+
+			if (REVERSE_ROTATION) {
+				// 逆回転の場合: topをプラス方向に動かして停止
+				targetTop = currentTop + distanceToNext;
+			} else {
+				// 正回転の場合: topをマイナス方向に動かして停止
+				targetTop = currentTop - distanceToNext;
+			}
 
 			function animateStop(now) {
 				let elapsed = now - start;
 				let progress = Math.min(elapsed / timeNeeded, 1);
 				let ease = 1 - Math.pow(1 - progress, 3);
-				reels[index].style.top = startTop - (distanceToNext * ease) + 'px';
+
+				if (REVERSE_ROTATION) {
+					reels[index].style.top = startTop + (distanceToNext * ease) + 'px';
+				} else {
+					reels[index].style.top = startTop - (distanceToNext * ease) + 'px';
+				}
 
 				if (progress < 1) {
 					requestAnimationFrame(animateStop);
@@ -314,6 +359,8 @@
 		// --- 初期化処理 ---
 		/**
 		 * リールの初期表示位置を設定する関数
+		 * 回転方向(REVERSE_ROTATION)に依存しないように修正しました。
+		 * これにより、回転方向を変えても初期位置は常に同じになります。
 		 */
 		function setInitialPositions() {
 			reels.forEach((reel, index) => {
@@ -325,9 +372,11 @@
 					reel.style.top = '0px';
 					return;
 				}
-				// 指定されたインデックスのシンボルが一番上に表示されるようにtopプロパティを計算します。
+
+				// 初期位置の計算は、回転方向に関わらず常に同じです。
+				// 指定されたシンボルが一番上に表示されるようにtopプロパティを計算します。
 				const topPosition = -positionIndex * SYMBOL_HEIGHT;
-				reel.style.top = topPosition + 'px';
+				reels[index].style.top = topPosition + 'px';
 			});
 		}
 
