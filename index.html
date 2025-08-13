@@ -1,102 +1,103 @@
 <!DOCTYPE html>
-<!-- 日本語の文書であることを示す -->
+<!-- この文書が日本語で書かれたHTML5文書であることを宣言します -->
 <html lang="ja">
 
 <head>
-	<!-- 文字コードをUTF-8に設定 -->
+	<!-- 文字エンコーディングをUTF-8に指定します。これにより、文字化けを防ぎます -->
 	<meta charset="UTF-8">
-	<!-- ブラウザのタブに表示されるタイトル -->
+	<!-- Webブラウザのタブやウィンドウのタイトルバーに表示されるテキストです -->
 	<title>3x3 スロットゲーム</title>
-	<!-- ここからスタイルシート（見た目の設定） -->
+	<!-- ここからこのページの見た目を定義するスタイルシート（CSS）です -->
 	<style>
-		/* ページ全体の基本スタイル */
+		/* ページ全体の基本的なスタイルを設定します */
 		body {
+			/* 背景色を目に優しい濃い灰色に設定します */
 			background: #222;
-			/* 背景色を濃い灰色に */
+			/* テキストの色を白に設定し、背景とのコントラストを確保します */
 			color: white;
-			/* 文字色を白に */
+			/* コンピュータにインストールされている基本的なサンセリフフォントを使用します */
 			font-family: sans-serif;
-			/* フォントの種類を指定 */
+			/* ページ内のすべてのテキストや要素を中央に配置します */
 			text-align: center;
-			/* 全ての要素を中央揃えに */
 		}
 
-		/* スロットマシン全体のコンテナ */
+		/* スロットマシン全体を囲むコンテナのスタイルです */
 		.slot-container {
+			/* 中のリール（.reel）を横一列に並べるためにflexboxを使用します */
 			display: inline-flex;
-			/* リールを横並びにする */
+			/* コンテナの周りに中太の灰色の枠線を描画します */
 			border: 5px solid #555;
-			/* 枠線を設定 */
+			/* コンテナの背景色を黒に設定します */
 			background: #000;
-			/* 背景色を黒に */
+			/* 枠線の内側に10ピクセルの余白を設けます */
 			padding: 10px;
-			/* 内側の余白 */
+			/* 上下に20ピクセル、左右は自動で中央配置になるように余白を設定します */
 			margin: 20px auto;
-			/* 外側の余白 */
 		}
 
-		/* 各リールのスタイル */
+		/* 個々のリール（シンボルが回転する列）のスタイルです */
 		.reel {
+			/* リールの幅を80ピクセルに設定します */
 			width: 80px;
-			/* 幅 */
+			/* リールの高さを240ピクセルに設定します。これにより、常に3つのシンボルが見える状態になります */
 			height: 240px;
-			/* 高さ（シンボル3つ分が見える高さ） */
+			/* リールの高さを超えて表示されるシンボルを隠します。これにより、回転がリール内で完結しているように見えます */
 			overflow: hidden;
-			/* はみ出したシンボルを隠す */
+			/* 各リールの周りに細い灰色の枠線を描画します */
 			border: 2px solid #444;
-			/* 枠線 */
+			/* 隣接するリールとの間に左右5ピクセルの間隔を設けます */
 			margin: 0 5px;
-			/* 隣のリールとの間隔 */
+			/* リールの背景色を非常に濃い灰色に設定します */
 			background: #111;
-			/* 背景色 */
+			/* 子要素（.symbols）を絶対位置で配置するための基準点とします */
 			position: relative;
-			/* 子要素の配置の基準にする */
 		}
 
-		/* シンボルを縦に並べるためのコンテナ */
+		/* シンボル全体を縦に並べて保持するコンテナのスタイルです */
 		.symbols {
+			/* 親要素（.reel）を基準とした絶対位置に配置します */
 			position: absolute;
-			/* 親要素(.reel)を基準に絶対位置で配置 */
+			/* 親要素の上端に配置します */
 			top: 0;
-			/* 上端を基準に */
+			/* 親要素の左端に配置します */
 			left: 0;
-			/* 左端を基準に */
+			/* 親要素の右端まで幅を広げます */
 			right: 0;
-			/* 右端を基準に */
 		}
 
-		/* 各シンボルのスタイル */
+		/* 個々のシンボル（絵文字）のスタイルです */
 		.symbol {
+			/* 各シンボルの高さを80ピクセルに設定します。これはリールの高さ(240px)の3分の1です */
 			height: 80px;
-			/* 高さ */
+			/* シンボルとして使用する絵文字のフォントサイズを50ピクセルに設定します */
 			font-size: 50px;
-			/* 絵文字のサイズ */
+			/* 行の高さをシンボルの高さと同じ80pxに設定することで、絵文字を垂直方向の中央に配置します */
 			line-height: 80px;
-			/* 高さと合わせて中央揃えにする */
 		}
 
-		/* ボタンの共通スタイル */
+		/* ボタン（スタート/ストップ、モード切替）に共通のスタイルです */
 		button {
+			/* ボタンの周囲に10ピクセルの余白を設けます */
 			margin: 10px;
-			/* 外側の余白 */
+			/* ボタンの内部に、上下10ピクセル、左右20ピクセルの余白を設けます */
 			padding: 10px 20px;
-			/* 内側の余白 */
+			/* ボタン内のテキストのフォントサイズを16ピクセルに設定します */
 			font-size: 16px;
-			/* 文字サイズ */
 		}
 	</style>
-	<!-- スタイルシートここまで -->
+	<!-- スタイルシートの定義はここまでです -->
 </head>
 
 <body>
 
-	<!-- ゲームのメインタイトル -->
+	<!-- ゲームのメインタイトルとして表示される見出しです -->
 	<h1>🎰 3x3 スロットゲーム 🎰</h1>
 
-	<!-- スロットマシンのHTML構造 -->
+	<!-- スロットマシンの視覚的な構造を定義するHTML部分です -->
 	<div class="slot-container" id="slot">
-		<!-- 3つのリールを配置 -->
+		<!-- JavaScriptから操作するために、各リールに一意のID（reel0, reel1, reel2）を付与します -->
 		<div class="reel" id="reel0">
+			<!-- このdivの中に、JavaScriptによってシンボルが動的に生成されます -->
 			<div class="symbols"></div>
 		</div>
 		<div class="reel" id="reel1">
@@ -106,172 +107,216 @@
 			<div class="symbols"></div>
 		</div>
 	</div>
+	<!-- 改行タグ -->
 	<br>
-	<!-- 操作ボタン -->
+	<!-- ゲームの操作に使用するボタンです -->
 	<button id="actionBtn">▶ スタート</button>
 	<button id="modeBtn">モード: 自動</button>
 
-	<!-- ここからJavaScript（ゲームのロジック） -->
+	<!-- ここからゲームの動作を制御するJavaScriptコードです -->
 	<script>
-		// --- 設定値（ゲームバランスの調整はここで行う） ---
-		// シンボル関連
-		const SYMBOL_HEIGHT = 80; // px単位。CSSの.symbolのheightと合わせる
+		// --- ゲームの基本設定（定数） ---
+		// これらの値を変更することで、ゲームの挙動やバランスを調整できます。
 
-		// 各リールのシンボル構成を定義します。
-		// 全てのリールで '7️⃣', '🍇', '7️⃣' の並びが最後に来るように統一し、管理を容易にしています。
+		// 【シンボル関連】
+		// 1シンボルの高さをピクセル単位で定義します。CSSの.symbolクラスのheightと一致させる必要があります。
+		const SYMBOL_HEIGHT = 80;
+
+		// 【リールデータ】
+		// 各リールに表示されるシンボルの配列を定義します。
+		// この配列の並び順が、リールの回転時に表示されるシンボルの順序となります。
+		// 配列の末尾は、初期表示や特定の演出のために意図的に同じシンボル（7️⃣, 🍇）で揃えられています。
 		const reelsData = [
-			// 左リール
+			// 左リール (reel0) のシンボル構成
 			['🍑', '🍋', '🍎', '🍑', '🍋', '💎', '🍉', '🍑', '🍋', 'BAR', '🍒', '🍎', '🍑', '🍋', '🍉', '🍑', '🍋', '7️⃣', '🍇', '7️⃣', '🍇'],
-			// 中央リール
+			// 中央リール (reel1) のシンボル構成
 			['🍑', '🍒', '🍋', '🍑', '🍎', '💎', '🍉', '🍋', '🍑', '🍒', 'BAR', '🍒', '🍋', '🍑', '🍉', '🍋', '🍑', '🍇', '7️⃣', '🍇', '🍋'],
-			// 右リール
+			// 右リール (reel2) のシンボル構成
 			['🍋', '🍎', '🍑', '🍋', '🍉', '💎', '🍑', '🍋', '🍒', 'BAR', '🍑', '🍋', '🍉', '🍎', '🍑', '🍋', '🍇', '7️⃣', '🍇', '7️⃣', '🍑']
 		];
 
-		// 各リールの初期表示位置（シンボル配列のインデックス）を定義します。
-		// このインデックスのシンボルが、リールの一番上に表示されるように設定されます。
-		// 全てのリールで 7️⃣ が一番上に来るように設定 (18番目のシンボル)
+		// 【初期位置】
+		// ゲーム開始時の各リールの初期表示位置を、reelsData配列のインデックスで指定します。
+		// ここで指定されたインデックスのシンボルが、リールの一番上に表示された状態でゲームが始まります。
+		// 例: [17, 17, 17] は、3つのリールすべてで18番目（インデックス17）のシンボルが一番上に来るように設定しています。
 		const initialReelPositions = [17, 17, 17];
 
-		// リール関連
-		const REEL_COUNT = 3; // リールの数
-		const AUTO_STOP_TIMINGS = [2000, 3000, 4000]; // 自動停止モードの各リール停止時間(ms)
+		// 【リール制御】
+		// リールの総数です。HTMLの.reel要素の数と一致させる必要があります。
+		const REEL_COUNT = 3;
+		// 「自動」モードの際に、各リールがスピンを開始してから自動的に停止するまでの時間（ミリ秒）です。
+		const AUTO_STOP_TIMINGS = [2000, 3000, 4000]; // [左, 中央, 右]
 
-		// アニメーション関連
-		const REVERSE_ROTATION = true; // trueで逆回転（下から上）、falseで正回転（上から下）
-		let maxSpeed = 7.5; // 最高速度（1フレームあたりのピクセル移動量）
-		const accelerationTime = 1000; // 最高速度に達するまでの時間(ms)
-		const MIN_STOP_ANIMATION_TIME = 100; // 停止アニメーションの最短時間(ms)
-		const MAX_STOP_ANIMATION_TIME = 1000; // 停止アニメーションの最長時間(ms)
-		// --- 設定値ここまで ---
+		// 【アニメーション関連】
+		// リールの回転方向を制御します。trueで下から上へ（逆回転）、falseで上から下へ（正回転）となります。
+		const REVERSE_ROTATION = true;
+		// リール回転の最高速度です。1フレームあたりに移動するピクセル量を示します。
+		let maxSpeed = 7.5;
+		// スピン開始から最高速度に到達するまでの時間（ミリ秒）です。
+		const accelerationTime = 1000;
+		// リールが停止する際のアニメーション（「ビタ止まり」を防ぐための滑らかな動き）の最短時間（ミリ秒）です。
+		const MIN_STOP_ANIMATION_TIME = 100;
+		// 同じく、停止アニメーションの最長時間（ミリ秒）です。
+		const MAX_STOP_ANIMATION_TIME = 1000;
+		// --- 設定値はここまで ---
+
 
 		// --- DOM要素の取得 ---
+		// JavaScriptからHTML要素を操作するために、あらかじめ要素を取得して変数に格納しておきます。
 		const reels = [];
 		for (let i = 0; i < REEL_COUNT; i++) {
+			// 各リールのシンボルコンテナ（.symbols）を取得し、reels配列に格納します。
 			reels.push(document.querySelector(`#reel${i} .symbols`));
 		}
+		// スタート/ストップボタンの要素を取得します。
 		const actionBtn = document.getElementById('actionBtn');
+		// モード切替ボタンの要素を取得します。
 		const modeBtn = document.getElementById('modeBtn');
 
-		// --- 内部変数（直接編集しない） ---
-		let spinning = new Array(REEL_COUNT).fill(false); // 各リールが回転中かどうかのフラグ
-		let animationFrameId = new Array(REEL_COUNT).fill(null); // アニメーションID
-		let modeAuto = true; // true:自動停止モード, false:目押しモード
-		let stopCount = 0; // 目押しモードで停止させたリールの数
-		// --- 内部変数ここまで ---
+
+		// --- 内部状態を管理する変数 ---
+		// これらの変数はゲームの進行中に動的に変化するため、letで宣言します。
+
+		// 各リールが現在回転中かどうかを保持するフラグです。 [false, false, false] のように初期化されます。
+		let spinning = new Array(REEL_COUNT).fill(false);
+		// 各リールのアニメーションフレームIDを保持します。アニメーションを停止する際に使用します。
+		let animationFrameId = new Array(REEL_COUNT).fill(null);
+		// 現在のゲームモードを保持します。trueなら「自動」モード、falseなら「目押し」モードです。
+		let modeAuto = true;
+		// 「目押し」モードで、プレイヤーが停止させたリールの数をカウントします。
+		let stopCount = 0;
+		// --- 内部変数はここまで ---
+
 
 		/**
-		 * 指定されたリールにシンボルをセットする関数
-		 * @param {HTMLElement} reelEl - シンボルを配置するリールの要素
-		 * @param {number} reelIndex - リールのインデックス（0から）
+		 * 指定されたリール要素内に、定義済みのシンボルを配置します。
+		 * 無限回転しているように見せるため、シンボルリストを2周分描画します。
+		 * @param {HTMLElement} reelEl - シンボルを配置する対象のHTML要素（.symbolsクラスを持つdiv）。
+		 * @param {number} reelIndex - 対象のリールのインデックス番号（0, 1, 2）。reelsDataのどの配列を使用するかを決定します。
 		 */
 		function fillReel(reelEl, reelIndex) {
-			reelEl.innerHTML = ''; // 中身を一旦空にする
-			const currentReelSymbols = reelsData[reelIndex]; // 現在のリールに対応するシンボルの配列を取得
-			// シンボルの配列を2周分追加する（無限ループしているように見せるため）
+			// 一度リールの中身を空にして、再描画に備えます。
+			reelEl.innerHTML = '';
+			// 対応するリールのシンボル配列を取得します。
+			const currentReelSymbols = reelsData[reelIndex];
+			// シンボル配列を2周分ループさせて要素を生成します。
 			for (let i = 0; i < currentReelSymbols.length * 2; i++) {
-				let div = document.createElement('div');
+				const div = document.createElement('div');
 				div.className = 'symbol';
-				// 'BAR'の時だけ文字サイズを調整する
-				if (currentReelSymbols[i % currentReelSymbols.length] === 'BAR') {
-					div.style.fontSize = '40px';
-					div.style.fontWeight = 'bold';
+				const symbolText = currentReelSymbols[i % currentReelSymbols.length];
+
+				// シンボルが'BAR'の場合、見た目を調整するための特別なスタイルを適用します。
+				if (symbolText === 'BAR') {
+					div.style.fontSize = '40px'; // フォントサイズを少し小さくする
+					div.style.fontWeight = 'bold'; // 太字にする
 				}
-				div.textContent = currentReelSymbols[i % currentReelSymbols.length];
+				div.textContent = symbolText;
 				reelEl.appendChild(div);
 			}
 		}
 
 		/**
-		 * 指定されたインデックスのリールを回転させる関数
+		 * 指定されたインデックスのリールを回転させるアニメーションを開始します。
+		 * @param {number} index - 回転を開始するリールのインデックス番号。
 		 */
 		function startReel(index) {
-			spinning[index] = true;
+			spinning[index] = true; // 回転フラグをtrueに設定
 			const currentReelSymbols = reelsData[index];
 			const totalHeight = currentReelSymbols.length * SYMBOL_HEIGHT;
-			let pos;
+			let pos; // 現在のリールの回転位置（ピクセル単位）
 
+			// 現在のtop位置から回転を開始するための初期位置`pos`を計算します。
+			// 回転方向によってtopの符号が変わるため、計算方法を分けています。
 			if (REVERSE_ROTATION) {
-				// 逆回転の場合のpos初期化: topは[-totalHeight, 0]なので、posは[0, totalHeight)
+				// 逆回転の場合、topは負の値なので、正の値に変換して計算します。
 				pos = (parseFloat(reels[index].style.top.replace('px', '')) || 0) + totalHeight;
 			} else {
-				// 正回転の場合のpos初期化: topは[-totalHeight, 0]なので、posは[0, totalHeight)
+				// 正回転の場合、topは負の値なので、符号を反転させて正の値にします。
 				pos = parseFloat(reels[index].style.top.replace('px', '')) * -1 || 0;
 			}
 
-			const startTime = performance.now();
+			const startTime = performance.now(); // アニメーション開始時刻を記録
 
+			// requestAnimationFrameを使用して滑らかなアニメーションを実現します。
 			function animate(currentTime) {
-				if (!spinning[index]) return;
+				if (!spinning[index]) return; // 停止命令が出ていればアニメーションを終了
+
 				const elapsed = currentTime - startTime;
 				let currentSpeed;
+
+				// 加速処理：開始から`accelerationTime`に達するまで徐々にスピードを上げます。
 				if (elapsed < accelerationTime) {
 					const progress = elapsed / accelerationTime;
-					const ease = progress * progress * progress;
+					const ease = progress * progress * progress; // イージング関数で滑らかな加速を表現
 					currentSpeed = maxSpeed * ease;
 				} else {
-					currentSpeed = maxSpeed;
+					currentSpeed = maxSpeed; // 最高速度に到達
 				}
 
-				// posの更新は共通
+				// 現在位置を更新し、リールの全長を超えたら0に戻す（ループさせる）。
 				pos = (pos + currentSpeed) % totalHeight;
 
+				// 計算した`pos`を実際のCSS `top`プロパティに反映させます。
 				if (REVERSE_ROTATION) {
-					// 逆回転のtop計算: posが[0, totalHeight)で増加すると、topは[-totalHeight, 0)で増加
+					// 逆回転：posが増加すると、topも0に向かって増加します。
 					reels[index].style.top = (pos - totalHeight) + 'px';
 				} else {
-					// 正回転のtop計算: posが[0, totalHeight)で増加すると、topは(0, -totalHeight]で減少
+					// 正回転：posが増加すると、topはマイナス方向に減少します。
 					reels[index].style.top = -pos + 'px';
 				}
+
+				// 次のフレームで再度animate関数を呼び出します。
 				animationFrameId[index] = requestAnimationFrame(animate);
 			}
 			requestAnimationFrame(animate);
 		}
 
 		/**
-		 * 指定されたインデックスのリールを停止させる関数
+		 * 指定されたインデックスのリールを、最も近いシンボルの位置で滑らかに停止させます。
+		 * @param {number} index - 停止させるリールのインデックス番号。
 		 */
 		function stopReel(index) {
-			if (!spinning[index]) return;
-			cancelAnimationFrame(animationFrameId[index]);
+			if (!spinning[index]) return; // すでに停止している場合は何もしない
+			cancelAnimationFrame(animationFrameId[index]); // 回転アニメーションをキャンセル
 
 			const currentReelSymbols = reelsData[index];
-			let currentTop = parseInt(reels[index].style.top || '0');
+			const currentTop = parseInt(reels[index].style.top || '0');
 			const totalSymbolHeight = currentReelSymbols.length * SYMBOL_HEIGHT;
 
+			// 現在のtop位置から、次のシンボルでぴったり止まるための残りの距離を計算します。
 			let remainder;
 			if (REVERSE_ROTATION) {
-				// 逆回転の場合: topは[-totalHeight, 0]なので、posは[0, totalHeight)
 				const pos = currentTop + totalSymbolHeight;
 				remainder = pos % SYMBOL_HEIGHT;
 			} else {
-				// 正回転の場合: topは[-totalHeight, 0]なので、posは[0, totalHeight)
 				let posMod = ((-currentTop) % totalSymbolHeight + totalSymbolHeight) % totalSymbolHeight;
 				remainder = posMod % SYMBOL_HEIGHT;
 			}
 
-			let distanceToNext = (SYMBOL_HEIGHT - remainder) % SYMBOL_HEIGHT;
+			// 次のシンボル位置までの距離
+			const distanceToNext = (SYMBOL_HEIGHT - remainder) % SYMBOL_HEIGHT;
 
+			// 停止アニメーションにかける時間を計算します。
 			let timeNeeded = Math.ceil(distanceToNext / maxSpeed) * 20;
 			timeNeeded = Math.min(Math.max(timeNeeded, MIN_STOP_ANIMATION_TIME), MAX_STOP_ANIMATION_TIME);
 
 			const start = performance.now();
 			const startTop = currentTop;
-			let targetTop;
+			let targetTop; // 最終的な停止位置
 
 			if (REVERSE_ROTATION) {
-				// 逆回転の場合: topをプラス方向に動かして停止
 				targetTop = currentTop + distanceToNext;
 			} else {
-				// 正回転の場合: topをマイナス方向に動かして停止
 				targetTop = currentTop - distanceToNext;
 			}
 
+			// 停止のための短いアニメーションを実行します。
 			function animateStop(now) {
-				let elapsed = now - start;
-				let progress = Math.min(elapsed / timeNeeded, 1);
-				let ease = 1 - Math.pow(1 - progress, 3);
+				const elapsed = now - start;
+				const progress = Math.min(elapsed / timeNeeded, 1);
+				const ease = 1 - Math.pow(1 - progress, 3); // イーズアウト関数で滑らかに減速
 
+				// 現在位置を更新
 				if (REVERSE_ROTATION) {
 					reels[index].style.top = startTop + (distanceToNext * ease) + 'px';
 				} else {
@@ -279,13 +324,16 @@
 				}
 
 				if (progress < 1) {
-					requestAnimationFrame(animateStop);
+					requestAnimationFrame(animateStop); // アニメーション継続
 				} else {
+					// アニメーション完了
 					spinning[index] = false;
-					reels[index].style.top = targetTop + 'px';
-					// 全てのリールが停止したかチェック
+					reels[index].style.top = targetTop + 'px'; // 最終位置に補正
+
+					// 全てのリールが停止したかを確認
 					const allStopped = spinning.every(s => !s);
 					if (allStopped) {
+						// 全て停止したら、スタートボタンを再度有効化する
 						actionBtn.textContent = '▶ スタート';
 						actionBtn.disabled = false;
 					}
@@ -295,45 +343,53 @@
 		}
 
 		/**
-		 * ゲームを開始する関数
+		 * ゲームを開始するメインの関数です。
+		 * 全てのリールを同時に回転させます。
 		 */
 		function startGame() {
-			// いずれかのリールが回転中なら処理しない
+			// いずれかのリールが回転中であれば、多重起動を防ぐために処理を中断します。
 			if (spinning.some(s => s)) return;
 
-			// モードに応じて回転速度を設定
+			// モードに応じて回転速度を調整します。
 			if (modeAuto) {
-				maxSpeed = 20; // 自動モードの速度
+				maxSpeed = 20; // 自動モードは速めに
 			} else {
-				maxSpeed = 8; // 目押しモードの速度
+				maxSpeed = 8;  // 目押しモードは少し遅めに
 			}
 
-			stopCount = 0;
+			stopCount = 0; // 目押しカウンターをリセット
+			// 全てのリールに対して回転開始命令を出します。
 			for (let i = 0; i < REEL_COUNT; i++) {
 				startReel(i);
 			}
 
 			if (modeAuto) {
-				actionBtn.disabled = true; // 自動モード中はボタンを無効化
+				// 自動モードの場合、スタートボタンを一時的に無効化します。
+				actionBtn.disabled = true;
+				// 設定されたタイミングで各リールを自動停止させます。
 				AUTO_STOP_TIMINGS.forEach((time, index) => {
-					// 停止時間に±500ms(0.5秒)のランダムな揺らぎを追加します。
+					// 停止タイミングにランダムな「揺らぎ」を追加して、単調さをなくします。
 					const randomTime = time + (Math.random() * 1000 - 500);
 					setTimeout(() => stopReel(index), randomTime);
 				});
 			} else {
-				actionBtn.textContent = '⏸ 停止'; // 目押しモードの場合、ボタンのテキストを変更
+				// 目押しモードの場合、ボタンのテキストを「停止」に変更します。
+				actionBtn.textContent = '⏸ 停止';
 			}
 		}
 
 		/**
-		 * 目押しモードで手動停止する関数
+		 * 「目押し」モード中に、プレイヤーがボタンを押した際にリールを1つずつ停止させる関数です。
 		 */
 		function stopManual() {
-			if (modeAuto || !spinning[stopCount]) return; // 自動モードなら何もしない、または回転中でなければ何もしない
+			// 自動モード中、または対応するリールが回転していない場合は処理を中断します。
+			if (modeAuto || !spinning[stopCount]) return;
+
 			if (stopCount < REEL_COUNT) {
-				stopReel(stopCount);
-				stopCount++;
-				// 最後のリールを停止させたら、ボタンを無効化
+				stopReel(stopCount); // 現在のカウンターに対応するリールを停止
+				stopCount++; // カウンターを次に進める
+
+				// 最後のリールを停止させたら、誤操作防止のためにボタンを無効化します。
 				if (stopCount === REEL_COUNT) {
 					actionBtn.disabled = true;
 				}
@@ -341,59 +397,68 @@
 		}
 
 		/**
-		 * スタート・ストップボタンのメイン処理
+		 * スタート/ストップボタンが押されたときの処理を振り分けるハンドラ関数です。
 		 */
 		function handleAction() {
+			// リールが一つでも回転しているか（ゲームが進行中か）を判定します。
 			const isGameSpinning = spinning.some(s => s);
 			if (isGameSpinning) {
+				// 回転中なら、手動停止（目押し）の処理を呼び出します。
 				stopManual();
-			}
-			else {
+			} else {
+				// 全て停止中なら、ゲーム開始の処理を呼び出します。
 				startGame();
 			}
 		}
 
 		// --- イベントリスナーの設定 ---
+		// 各ボタンがクリックされたときに、対応する関数を呼び出すように設定します。
+
+		// スタート/ストップボタンのクリックイベント
 		actionBtn.addEventListener('click', handleAction);
 
+		// モード切替ボタンのクリックイベント
 		modeBtn.addEventListener('click', () => {
-			// ゲーム回転中はモード変更不可
+			// ゲームが回転中はモードを変更できないようにします。
 			if (spinning.some(s => s)) return;
-			modeAuto = !modeAuto;
+			modeAuto = !modeAuto; // モードフラグを反転させる
 			modeBtn.textContent = 'モード: ' + (modeAuto ? '自動' : '目押し');
 		});
 
+
 		// --- 初期化処理 ---
+		// ページが読み込まれたときに、ゲームをプレイできる状態に準備します。
+
 		/**
-		 * リールの初期表示位置を設定する関数
-		 * 回転方向(REVERSE_ROTATION)に依存しないように修正しました。
-		 * これにより、回転方向を変えても初期位置は常に同じになります。
+		 * `initialReelPositions`の設定に基づいて、各リールの初期表示位置を設定します。
+		 * この関数は、回転方向（REVERSE_ROTATION）の設定に影響されずに、常に正しい初期位置を計算します。
 		 */
 		function setInitialPositions() {
 			reels.forEach((reel, index) => {
 				const positionIndex = initialReelPositions[index];
 				const reelSymbols = reelsData[index];
-				// 指定されたインデックスがリールの範囲外の場合は、0にフォールバックします。
+
+				// 設定されたインデックスが不正な値の場合、エラーをコンソールに出力し、安全な初期値(0)に設定します。
 				if (positionIndex < 0 || positionIndex >= reelSymbols.length) {
 					console.error(`リール${index}の初期位置(${positionIndex})が無効です。0に設定します。`);
 					reel.style.top = '0px';
 					return;
 				}
 
-				// 初期位置の計算は、回転方向に関わらず常に同じです。
-				// 指定されたシンボルが一番上に表示されるようにtopプロパティを計算します。
+				// 指定されたシンボルが一番上に表示されるように、CSSのtopプロパティを計算します。
+				// top位置 = - (シンボルのインデックス * 1シンボルの高さ)
 				const topPosition = -positionIndex * SYMBOL_HEIGHT;
 				reels[index].style.top = topPosition + 'px';
 			});
 		}
 
-		// 各リール要素とそのインデックスを渡して、リールを初期化します。
+		// 1. 各リールにシンボルを配置します。
 		reels.forEach((reel, index) => fillReel(reel, index));
-		// リールの初期表示位置を設定します。
+		// 2. 計算された初期位置に各リールを配置します。
 		setInitialPositions();
 
 	</script>
-	<!-- JavaScriptここまで -->
+	<!-- JavaScriptのコードはここまでです -->
 </body>
 
 </html>
