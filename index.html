@@ -1,278 +1,318 @@
 <!DOCTYPE html>
 <!-- 日本語の文書であることを示す -->
 <html lang="ja">
+
 <head>
-<!-- 文字コードをUTF-8に設定 -->
-<meta charset="UTF-8">
-<!-- ブラウザのタブに表示されるタイトル -->
-<title>3x3 スロットゲーム</title>
-<!-- ここからスタイルシート（見た目の設定） -->
-<style>
-  /* ページ全体の基本スタイル */
-  body {
-    background: #222; /* 背景色を濃い灰色に */
-    color: white; /* 文字色を白に */
-    font-family: sans-serif; /* フォントの種類を指定 */
-    text-align: center; /* 全ての要素を中央揃えに */
-  }
-  /* スロットマシン全体のコンテナ */
-  .slot-container {
-    display: inline-flex; /* リールを横並びにする */
-    border: 5px solid #555; /* 枠線を設定 */
-    background: #000; /* 背景色を黒に */
-    padding: 10px; /* 内側の余白 */
-    margin: 20px auto; /* 外側の余白 */
-  }
-  /* 各リールのスタイル */
-  .reel {
-    width: 80px; /* 幅 */
-    height: 240px; /* 高さ（シンボル3つ分が見える高さ） */
-    overflow: hidden; /* はみ出したシンボルを隠す */
-    border: 2px solid #444; /* 枠線 */
-    margin: 0 5px; /* 隣のリールとの間隔 */
-    background: #111; /* 背景色 */
-    position: relative; /* 子要素の配置の基準にする */
-  }
-  /* シンボルを縦に並べるためのコンテナ */
-  .symbols {
-    position: absolute; /* 親要素(.reel)を基準に絶対位置で配置 */
-    top: 0; /* 上端を基準に */
-    left: 0; /* 左端を基準に */
-    right: 0; /* 右端を基準に */
-  }
-  /* 各シンボルのスタイル */
-  .symbol {
-    height: 80px; /* 高さ */
-    font-size: 50px; /* 絵文字のサイズ */
-    line-height: 80px; /* 高さと合わせて中央揃えにする */
-  }
-  /* ボタンの共通スタイル */
-  button {
-    margin: 10px; /* 外側の余白 */
-    padding: 10px 20px; /* 内側の余白 */
-    font-size: 16px; /* 文字サイズ */
-  }
-</style>
-<!-- スタイルシートここまで -->
+	<!-- 文字コードをUTF-8に設定 -->
+	<meta charset="UTF-8">
+	<!-- ブラウザのタブに表示されるタイトル -->
+	<title>3x3 スロットゲーム</title>
+	<!-- ここからスタイルシート（見た目の設定） -->
+	<style>
+		/* ページ全体の基本スタイル */
+		body {
+			background: #222;
+			/* 背景色を濃い灰色に */
+			color: white;
+			/* 文字色を白に */
+			font-family: sans-serif;
+			/* フォントの種類を指定 */
+			text-align: center;
+			/* 全ての要素を中央揃えに */
+		}
+
+		/* スロットマシン全体のコンテナ */
+		.slot-container {
+			display: inline-flex;
+			/* リールを横並びにする */
+			border: 5px solid #555;
+			/* 枠線を設定 */
+			background: #000;
+			/* 背景色を黒に */
+			padding: 10px;
+			/* 内側の余白 */
+			margin: 20px auto;
+			/* 外側の余白 */
+		}
+
+		/* 各リールのスタイル */
+		.reel {
+			width: 80px;
+			/* 幅 */
+			height: 240px;
+			/* 高さ（シンボル3つ分が見える高さ） */
+			overflow: hidden;
+			/* はみ出したシンボルを隠す */
+			border: 2px solid #444;
+			/* 枠線 */
+			margin: 0 5px;
+			/* 隣のリールとの間隔 */
+			background: #111;
+			/* 背景色 */
+			position: relative;
+			/* 子要素の配置の基準にする */
+		}
+
+		/* シンボルを縦に並べるためのコンテナ */
+		.symbols {
+			position: absolute;
+			/* 親要素(.reel)を基準に絶対位置で配置 */
+			top: 0;
+			/* 上端を基準に */
+			left: 0;
+			/* 左端を基準に */
+			right: 0;
+			/* 右端を基準に */
+		}
+
+		/* 各シンボルのスタイル */
+		.symbol {
+			height: 80px;
+			/* 高さ */
+			font-size: 50px;
+			/* 絵文字のサイズ */
+			line-height: 80px;
+			/* 高さと合わせて中央揃えにする */
+		}
+
+		/* ボタンの共通スタイル */
+		button {
+			margin: 10px;
+			/* 外側の余白 */
+			padding: 10px 20px;
+			/* 内側の余白 */
+			font-size: 16px;
+			/* 文字サイズ */
+		}
+	</style>
+	<!-- スタイルシートここまで -->
 </head>
+
 <body>
 
-<!-- ゲームのメインタイトル -->
-<h1>🎰 3x3 スロットゲーム 🎰</h1>
+	<!-- ゲームのメインタイトル -->
+	<h1>🎰 3x3 スロットゲーム 🎰</h1>
 
-<!-- スロットマシンのHTML構造 -->
-<div class="slot-container" id="slot">
-  <!-- 3つのリールを配置 -->
-  <div class="reel" id="reel0"><div class="symbols"></div></div>
-  <div class="reel" id="reel1"><div class="symbols"></div></div>
-  <div class="reel" id="reel2"><div class="symbols"></div></div>
-</div>
-<br>
-<!-- 操作ボタン -->
-<button id="actionBtn">▶ スタート</button>
-<button id="modeBtn">モード: 自動</button>
+	<!-- スロットマシンのHTML構造 -->
+	<div class="slot-container" id="slot">
+		<!-- 3つのリールを配置 -->
+		<div class="reel" id="reel0">
+			<div class="symbols"></div>
+		</div>
+		<div class="reel" id="reel1">
+			<div class="symbols"></div>
+		</div>
+		<div class="reel" id="reel2">
+			<div class="symbols"></div>
+		</div>
+	</div>
+	<br>
+	<!-- 操作ボタン -->
+	<button id="actionBtn">▶ スタート</button>
+	<button id="modeBtn">モード: 自動</button>
 
-<!-- ここからJavaScript（ゲームのロジック） -->
-<script>
-// --- 設定値（ゲームバランスの調整はここで行う） ---
-// シンボル関連
-const SYMBOL_HEIGHT = 80; // px単位。CSSの.symbolのheightと合わせる
+	<!-- ここからJavaScript（ゲームのロジック） -->
+	<script>
+		// --- 設定値（ゲームバランスの調整はここで行う） ---
+		// シンボル関連
+		const SYMBOL_HEIGHT = 80; // px単位。CSSの.symbolのheightと合わせる
 
-// 各リールのシンボル構成を定義します。
-const reelsData = [
-  // 左リール: A=🍑, B=🍋, C=🍎, D=💎, E=🍉, F='BAR', G=🍒, H=🍇, 7=7️⃣
-  ['🍑', '🍋', '🍎', '🍑', '🍋', '💎', '🍉', '🍑', '🍋', 'BAR', '🍒', '🍎', '🍑', '🍋', '🍉', '🍑', '🍋', '7️⃣', '🍇', '7️⃣', '🍇'],
-  // 中央リール
-  ['🍑', '🍒', '🍋', '🍑', '🍎', '💎', '🍉', '🍋', '🍑', '🍒', 'BAR', '🍒', '🍋', '🍑', '🍉', '🍋', '🍑', '🍇', '7️⃣', '🍇', '🍋'],
-  // 右リール
-  ['🍋', '🍎', '🍑', '🍋', '🍉', '💎', '🍑', '🍋', '🍒', 'BAR', '🍑', '🍋', '🍉', '🍎', '🍑', '🍋', '🍇', '7️⃣', '🍇', '7️⃣', '🍑']
-];
+		// 各リールのシンボル構成を定義します。
+		const reelsData = [
+			// 左リール: A=🍑, B=🍋, C=🍎, D=💎, E=🍉, F='BAR', G=🍒, H=🍇, 7=7️⃣
+			['🍑', '🍋', '🍎', '🍑', '🍋', '💎', '🍉', '🍑', '🍋', 'BAR', '🍒', '🍎', '🍑', '🍋', '🍉', '🍑', '🍋', '7️⃣', '🍇', '7️⃣', '🍇'],
+			// 中央リール
+			['🍑', '🍒', '🍋', '🍑', '🍎', '💎', '🍉', '🍋', '🍑', '🍒', 'BAR', '🍒', '🍋', '🍑', '🍉', '🍋', '🍑', '🍇', '7️⃣', '🍇', '🍋'],
+			// 右リール
+			['🍋', '🍎', '🍑', '🍋', '🍉', '💎', '🍑', '🍋', '🍒', 'BAR', '🍑', '🍋', '🍉', '🍎', '🍑', '🍋', '🍇', '7️⃣', '🍇', '7️⃣', '🍑']
+		];
 
-// リール関連
-const REEL_COUNT = 3; // リールの数
-const AUTO_STOP_TIMINGS = [1500, 2100, 2700]; // 自動停止モードの各リール停止時間(ms)
+		// リール関連
+		const REEL_COUNT = 3; // リールの数
+		const AUTO_STOP_TIMINGS = [2500, 3100, 3700]; // 自動停止モードの各リール停止時間(ms)
 
-// アニメーション関連
-const maxSpeed = 7.5; // 最高速度（1フレームあたりのピクセル移動量）
-const accelerationTime = 1000; // 最高速度に達するまでの時間(ms)
-const MIN_STOP_ANIMATION_TIME = 100; // 停止アニメーションの最短時間(ms)
-const MAX_STOP_ANIMATION_TIME = 1000; // 停止アニメーションの最長時間(ms)
-// --- 設定値ここまで ---
+		// アニメーション関連
+		const maxSpeed = 7.5; // 最高速度（1フレームあたりのピクセル移動量）
+		const accelerationTime = 1000; // 最高速度に達するまでの時間(ms)
+		const MIN_STOP_ANIMATION_TIME = 100; // 停止アニメーションの最短時間(ms)
+		const MAX_STOP_ANIMATION_TIME = 1000; // 停止アニメーションの最長時間(ms)
+		// --- 設定値ここまで ---
 
-// --- DOM要素の取得 ---
-const reels = [];
-for (let i = 0; i < REEL_COUNT; i++) {
-  reels.push(document.querySelector(`#reel${i} .symbols`));
-}
-const actionBtn = document.getElementById('actionBtn');
-const modeBtn = document.getElementById('modeBtn');
+		// --- DOM要素の取得 ---
+		const reels = [];
+		for (let i = 0; i < REEL_COUNT; i++) {
+			reels.push(document.querySelector(`#reel${i} .symbols`));
+		}
+		const actionBtn = document.getElementById('actionBtn');
+		const modeBtn = document.getElementById('modeBtn');
 
-// --- 内部変数（直接編集しない） ---
-let spinning = new Array(REEL_COUNT).fill(false); // 各リールが回転中かどうかのフラグ
-let animationFrameId = new Array(REEL_COUNT).fill(null); // アニメーションID
-let modeAuto = true; // true:自動停止モード, false:目押しモード
-let stopCount = 0; // 目押しモードで停止させたリールの数
-// --- 内部変数ここまで ---
+		// --- 内部変数（直接編集しない） ---
+		let spinning = new Array(REEL_COUNT).fill(false); // 各リールが回転中かどうかのフラグ
+		let animationFrameId = new Array(REEL_COUNT).fill(null); // アニメーションID
+		let modeAuto = true; // true:自動停止モード, false:目押しモード
+		let stopCount = 0; // 目押しモードで停止させたリールの数
+		// --- 内部変数ここまで ---
 
-/**
- * 指定されたリールにシンボルをセットする関数
- * @param {HTMLElement} reelEl - シンボルを配置するリールの要素
- * @param {number} reelIndex - リールのインデックス（0から）
- */
-function fillReel(reelEl, reelIndex) {
-  reelEl.innerHTML = ''; // 中身を一旦空にする
-  const currentReelSymbols = reelsData[reelIndex]; // 現在のリールに対応するシンボルの配列を取得
-  // シンボルの配列を2周分追加する（無限ループしているように見せるため）
-  for (let i = 0; i < currentReelSymbols.length * 2; i++) {
-    let div = document.createElement('div');
-    div.className = 'symbol';
-    // 'BAR'の時だけ文字サイズを調整する
-    if (currentReelSymbols[i % currentReelSymbols.length] === 'BAR') {
-        div.style.fontSize = '40px';
-        div.style.fontWeight = 'bold';
-    }
-    div.textContent = currentReelSymbols[i % currentReelSymbols.length];
-    reelEl.appendChild(div);
-  }
-}
+		/**
+		 * 指定されたリールにシンボルをセットする関数
+		 * @param {HTMLElement} reelEl - シンボルを配置するリールの要素
+		 * @param {number} reelIndex - リールのインデックス（0から）
+		 */
+		function fillReel(reelEl, reelIndex) {
+			reelEl.innerHTML = ''; // 中身を一旦空にする
+			const currentReelSymbols = reelsData[reelIndex]; // 現在のリールに対応するシンボルの配列を取得
+			// シンボルの配列を2周分追加する（無限ループしているように見せるため）
+			for (let i = 0; i < currentReelSymbols.length * 2; i++) {
+				let div = document.createElement('div');
+				div.className = 'symbol';
+				// 'BAR'の時だけ文字サイズを調整する
+				if (currentReelSymbols[i % currentReelSymbols.length] === 'BAR') {
+					div.style.fontSize = '40px';
+					div.style.fontWeight = 'bold';
+				}
+				div.textContent = currentReelSymbols[i % currentReelSymbols.length];
+				reelEl.appendChild(div);
+			}
+		}
 
-/**
- * 指定されたインデックスのリールを回転させる関数
- */
-function startReel(index) {
-  spinning[index] = true;
-  let pos = parseFloat(reels[index].style.top.replace('px', '')) * -1 || 0;
-  const startTime = performance.now();
-  const currentReelSymbols = reelsData[index];
+		/**
+		 * 指定されたインデックスのリールを回転させる関数
+		 */
+		function startReel(index) {
+			spinning[index] = true;
+			let pos = parseFloat(reels[index].style.top.replace('px', '')) * -1 || 0;
+			const startTime = performance.now();
+			const currentReelSymbols = reelsData[index];
 
-  function animate(currentTime) {
-    if (!spinning[index]) return;
-    const elapsed = currentTime - startTime;
-    let currentSpeed;
-    if (elapsed < accelerationTime) {
-      const progress = elapsed / accelerationTime;
-      const ease = progress * progress * progress;
-      currentSpeed = maxSpeed * ease;
-    } else {
-      currentSpeed = maxSpeed;
-    }
-    pos = (pos + currentSpeed) % (currentReelSymbols.length * SYMBOL_HEIGHT);
-    reels[index].style.top = -pos + 'px';
-    animationFrameId[index] = requestAnimationFrame(animate);
-  }
-  requestAnimationFrame(animate);
-}
+			function animate(currentTime) {
+				if (!spinning[index]) return;
+				const elapsed = currentTime - startTime;
+				let currentSpeed;
+				if (elapsed < accelerationTime) {
+					const progress = elapsed / accelerationTime;
+					const ease = progress * progress * progress;
+					currentSpeed = maxSpeed * ease;
+				} else {
+					currentSpeed = maxSpeed;
+				}
+				pos = (pos + currentSpeed) % (currentReelSymbols.length * SYMBOL_HEIGHT);
+				reels[index].style.top = -pos + 'px';
+				animationFrameId[index] = requestAnimationFrame(animate);
+			}
+			requestAnimationFrame(animate);
+		}
 
-/**
- * 指定されたインデックスのリールを停止させる関数
- */
-function stopReel(index) {
-  if (!spinning[index]) return;
-  cancelAnimationFrame(animationFrameId[index]);
+		/**
+		 * 指定されたインデックスのリールを停止させる関数
+		 */
+		function stopReel(index) {
+			if (!spinning[index]) return;
+			cancelAnimationFrame(animationFrameId[index]);
 
-  const currentReelSymbols = reelsData[index];
-  let currentTop = parseInt(reels[index].style.top || '0');
-  const totalSymbolHeight = currentReelSymbols.length * SYMBOL_HEIGHT;
-  let posMod = ((-currentTop) % totalSymbolHeight + totalSymbolHeight) % totalSymbolHeight;
-  let remainder = posMod % SYMBOL_HEIGHT;
-  let distanceToNext = (SYMBOL_HEIGHT - remainder) % SYMBOL_HEIGHT;
+			const currentReelSymbols = reelsData[index];
+			let currentTop = parseInt(reels[index].style.top || '0');
+			const totalSymbolHeight = currentReelSymbols.length * SYMBOL_HEIGHT;
+			let posMod = ((-currentTop) % totalSymbolHeight + totalSymbolHeight) % totalSymbolHeight;
+			let remainder = posMod % SYMBOL_HEIGHT;
+			let distanceToNext = (SYMBOL_HEIGHT - remainder) % SYMBOL_HEIGHT;
 
-  let timeNeeded = Math.ceil(distanceToNext / maxSpeed) * 20;
-  timeNeeded = Math.min(Math.max(timeNeeded, MIN_STOP_ANIMATION_TIME), MAX_STOP_ANIMATION_TIME);
+			let timeNeeded = Math.ceil(distanceToNext / maxSpeed) * 20;
+			timeNeeded = Math.min(Math.max(timeNeeded, MIN_STOP_ANIMATION_TIME), MAX_STOP_ANIMATION_TIME);
 
-  const start = performance.now();
-  const startTop = currentTop;
-  const targetTop = currentTop - distanceToNext;
+			const start = performance.now();
+			const startTop = currentTop;
+			const targetTop = currentTop - distanceToNext;
 
-  function animateStop(now) {
-    let elapsed = now - start;
-    let progress = Math.min(elapsed / timeNeeded, 1);
-    let ease = 1 - Math.pow(1 - progress, 3);
-    reels[index].style.top = startTop - (distanceToNext * ease) + 'px';
+			function animateStop(now) {
+				let elapsed = now - start;
+				let progress = Math.min(elapsed / timeNeeded, 1);
+				let ease = 1 - Math.pow(1 - progress, 3);
+				reels[index].style.top = startTop - (distanceToNext * ease) + 'px';
 
-    if (progress < 1) {
-      requestAnimationFrame(animateStop);
-    } else {
-      spinning[index] = false;
-      reels[index].style.top = targetTop + 'px';
-      // 全てのリールが停止したかチェック
-      const allStopped = spinning.every(s => !s);
-      if (allStopped) {
-        actionBtn.textContent = '▶ スタート';
-        actionBtn.disabled = false;
-      }
-    }
-  }
-  requestAnimationFrame(animateStop);
-}
+				if (progress < 1) {
+					requestAnimationFrame(animateStop);
+				} else {
+					spinning[index] = false;
+					reels[index].style.top = targetTop + 'px';
+					// 全てのリールが停止したかチェック
+					const allStopped = spinning.every(s => !s);
+					if (allStopped) {
+						actionBtn.textContent = '▶ スタート';
+						actionBtn.disabled = false;
+					}
+				}
+			}
+			requestAnimationFrame(animateStop);
+		}
 
-/**
- * ゲームを開始する関数
- */
-function startGame() {
-  // いずれかのリールが回転中なら処理しない
-  if (spinning.some(s => s)) return;
+		/**
+		 * ゲームを開始する関数
+		 */
+		function startGame() {
+			// いずれかのリールが回転中なら処理しない
+			if (spinning.some(s => s)) return;
 
-  stopCount = 0;
-  for (let i = 0; i < REEL_COUNT; i++) {
-    startReel(i);
-  }
+			stopCount = 0;
+			for (let i = 0; i < REEL_COUNT; i++) {
+				startReel(i);
+			}
 
-  if (modeAuto) {
-    actionBtn.disabled = true; // 自動モード中はボタンを無効化
-    AUTO_STOP_TIMINGS.forEach((time, index) => {
-      // 停止時間に±200msのランダムな揺らぎを追加します。
-      const randomTime = time + (Math.random() * 400 - 200);
-      setTimeout(() => stopReel(index), randomTime);
-    });
-  } else {
-    actionBtn.textContent = '⏸ 停止'; // 目押しモードの場合、ボタンのテキストを変更
-  }
-}
+			if (modeAuto) {
+				actionBtn.disabled = true; // 自動モード中はボタンを無効化
+				AUTO_STOP_TIMINGS.forEach((time, index) => {
+					// 停止時間に±200msのランダムな揺らぎを追加します。
+					const randomTime = time + (Math.random() * 400 - 200);
+					setTimeout(() => stopReel(index), randomTime);
+				});
+			} else {
+				actionBtn.textContent = '⏸ 停止'; // 目押しモードの場合、ボタンのテキストを変更
+			}
+		}
 
-/**
- * 目押しモードで手動停止する関数
- */
-function stopManual() {
-  if (modeAuto || !spinning[stopCount]) return; // 自動モードなら何もしない、または回転中でなければ何もしない
-  if (stopCount < REEL_COUNT) {
-    stopReel(stopCount);
-    stopCount++;
-    // 最後のリールを停止させたら、ボタンを無効化
-    if (stopCount === REEL_COUNT) {
-        actionBtn.disabled = true;
-    }
-  }
-}
+		/**
+		 * 目押しモードで手動停止する関数
+		 */
+		function stopManual() {
+			if (modeAuto || !spinning[stopCount]) return; // 自動モードなら何もしない、または回転中でなければ何もしない
+			if (stopCount < REEL_COUNT) {
+				stopReel(stopCount);
+				stopCount++;
+				// 最後のリールを停止させたら、ボタンを無効化
+				if (stopCount === REEL_COUNT) {
+					actionBtn.disabled = true;
+				}
+			}
+		}
 
-/**
- * スタート・ストップボタンのメイン処理
- */
-function handleAction() {
-  const isGameSpinning = spinning.some(s => s);
-  if (isGameSpinning) {
-    stopManual();
-  }
-  else {
-    startGame();
-  }
-}
+		/**
+		 * スタート・ストップボタンのメイン処理
+		 */
+		function handleAction() {
+			const isGameSpinning = spinning.some(s => s);
+			if (isGameSpinning) {
+				stopManual();
+			}
+			else {
+				startGame();
+			}
+		}
 
-// --- イベントリスナーの設定 ---
-actionBtn.addEventListener('click', handleAction);
+		// --- イベントリスナーの設定 ---
+		actionBtn.addEventListener('click', handleAction);
 
-modeBtn.addEventListener('click', () => {
-  // ゲーム回転中はモード変更不可
-  if (spinning.some(s => s)) return;
-  modeAuto = !modeAuto;
-  modeBtn.textContent = 'モード: ' + (modeAuto ? '自動' : '目押し');
-});
+		modeBtn.addEventListener('click', () => {
+			// ゲーム回転中はモード変更不可
+			if (spinning.some(s => s)) return;
+			modeAuto = !modeAuto;
+			modeBtn.textContent = 'モード: ' + (modeAuto ? '自動' : '目押し');
+		});
 
-// --- 初期化処理 ---
-// 各リール要素とそのインデックスを渡して、リールを初期化します。
-reels.forEach((reel, index) => fillReel(reel, index));
+		// --- 初期化処理 ---
+		// 各リール要素とそのインデックスを渡して、リールを初期化します。
+		reels.forEach((reel, index) => fillReel(reel, index));
 
-</script>
-<!-- JavaScriptここまで -->
+	</script>
+	<!-- JavaScriptここまで -->
 </body>
+
 </html>
