@@ -36,7 +36,7 @@ const gameConfig = {
     manualSpeed: 10,       // 目押しモード時のリール回転速度 (ピクセル/フレーム)
     accelerationTime: 1000, // スピン開始から最高速に達するまでの加速時間 (ms)
     minStopAnimTime: 10,  // 停止アニメーションの最短時間 (ms)
-    maxStopAnimTime: 1000, // 停止アニメーションの最長時間 (ms)
+    maxStopAnimTime: 2000, // 停止アニメーションの最長時間 (ms)
     reverseRotation: true, // リールの回転方向 (true: 下から上へ, false: 上から下へ)
 
     // --- 自動モード設定 ---
