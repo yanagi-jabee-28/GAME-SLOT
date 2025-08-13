@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>3x3 スロットゲーム</title>
+<style>
+  body {
+    background: #222;
+    color: white;
+    font-family: sans-serif;
+    text-align: center;
+  }
+  .slot-container {
+    display: inline-flex;
+    border: 5px solid #555;
+    background: #000;
+    padding: 10px;
+    margin: 20px auto;
+  }
+  .reel {
+    width: 80px;
+    height: 240px;
+    overflow: hidden;
+    border: 2px solid #444;
+    margin: 0 5px;
+    background: #111;
+    position: relative;
+  }
+  .symbols {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+  }
+  .symbol {
+    height: 80px;
+    font-size: 50px;
+    line-height: 80px;
+  }
+  button {
+    margin: 10px;
+    padding: 10px 20px;
+    font-size: 16px;
+  }
+</style>
+</head>
+<body>
+<h1>🎰 3x3 スロットゲーム 🎰</h1>
+<div class="slot-container" id="slot">
+  <div class="reel" id="reel0"><div class="symbols"></div></div>
+  <div class="reel" id="reel1"><div class="symbols"></div></div>
+  <div class="reel" id="reel2"><div class="symbols"></div></div>
+</div>
+<br>
+<button id="startBtn">▶ スタート</button>
+<button id="stopBtn">⏸ 停止（目押し）</button>
+<button id="modeBtn">モード: 自動</button>
+
+<script>
+const symbols = ["🍒","🍋","🔔","⭐","7️⃣"];
+const reels = [document.querySelector('#reel0 .symbols'),
+               document.querySelector('#reel1 .symbols'),
+               document.querySelector('#reel2 .symbols')];
+let spinning = [false,false,false];
+let spinInterval = [null,null,null];
+let modeAuto = true;
+let stopCount = 0;
+const speed = 10; // px per frame (50ms)
+
+function fillReel(reelEl) {
+  reelEl.innerHTML = '';
+  for (let i = 0; i < symbols.length; i++) {
+    let div = document.createElement('div');
+    div.className = 'symbol';
+    div.textContent = symbols[i];
+    reelEl.appendChild(div);
+  }
+  for (let i = 0; i < symbols.length; i++) {
+    let div = document.createElement('div');
+    div.className = 'symbol';
+    div.textContent = symbols[i];
+    reelEl.appendChild(div);
+  }
+}
+
+function startReel(index) {
+  spinning[index] = true;
+  let pos = 0;
+  spinInterval[index] = setInterval(() => {
+    pos = (pos + speed) % (symbols.length * 80);
+    reels[index].style.top = -pos + 'px';
+  }, 50);
+  reels[index].dataset.pos = 0;
+}
+
+function stopReel(index) {
+  if (!spinning[index]) return;
+  let currentTop = parseInt(reels[index].style.top || '0');
+  let posMod = ((-currentTop) % (symbols.length * 80) + (symbols.length * 80)) % (symbols.length * 80);
+  let remainder = posMod % 80;
+  let distanceToNext = (80 - remainder) % 80;
+  let framesNeeded = Math.ceil(distanceToNext / speed);
+  let timeNeeded = framesNeeded * 50;
+
+  timeNeeded = Math.min(Math.max(timeNeeded, 100), 1000);
+
+  clearInterval(spinInterval[index]);
+
+  let start = performance.now();
+  let startTop = currentTop;
+  let targetTop = currentTop - distanceToNext;
+
+  function animateStop(now) {
+    let elapsed = now - start;
+    let progress = Math.min(elapsed / timeNeeded, 1);
+    let ease = 1 - Math.pow(1 - progress, 3); // easeOutCubic
+    reels[index].style.top = startTop + (targetTop - startTop) * ease + 'px';
+    if (progress < 1) {
+      requestAnimationFrame(animateStop);
+    } else {
+      spinning[index] = false;
+      reels[index].style.top = targetTop + 'px';
+    }
+  }
+
+  requestAnimationFrame(animateStop);
+}
+
+function startGame() {
+  stopCount = 0;
+  for (let i=0;i<3;i++) {
+    startReel(i);
+  }
+  if (modeAuto) {
+    setTimeout(()=>stopReel(0),1000);
+    setTimeout(()=>stopReel(1),1600);
+    setTimeout(()=>stopReel(2),2200);
+  }
+}
+
+function stopManual() {
+  if (modeAuto) return;
+  if (stopCount < 3) {
+    stopReel(stopCount);
+    stopCount++;
+  }
+}
+
+document.getElementById('startBtn').addEventListener('click', startGame);
+document.getElementById('stopBtn').addEventListener('click', stopManual);
+document.getElementById('modeBtn').addEventListener('click', () => {
+  modeAuto = !modeAuto;
+  document.getElementById('modeBtn').textContent = 'モード: ' + (modeAuto ? '自動' : '目押し');
+});
+
+reels.forEach(fillReel);
+</script>
+</body>
+</html>
