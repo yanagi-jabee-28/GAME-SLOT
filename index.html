@@ -135,7 +135,7 @@
 
 		// リール関連
 		const REEL_COUNT = 3; // リールの数
-		const AUTO_STOP_TIMINGS = [1500, 2500, 3500]; // 自動停止モードの各リール停止時間(ms)
+		const AUTO_STOP_TIMINGS = [2000, 3000, 4000]; // 自動停止モードの各リール停止時間(ms)
 
 		// アニメーション関連
 		const REVERSE_ROTATION = true; // trueで逆回転（下から上）、falseで正回転（上から下）
@@ -303,9 +303,9 @@
 
 			// モードに応じて回転速度を設定
 			if (modeAuto) {
-				maxSpeed = 30; // 自動モードの速度
+				maxSpeed = 20; // 自動モードの速度
 			} else {
-				maxSpeed = 7.5; // 目押しモードの速度
+				maxSpeed = 8; // 目押しモードの速度
 			}
 
 			stopCount = 0;
