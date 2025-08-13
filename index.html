@@ -133,7 +133,7 @@
 
 		// リール関連
 		const REEL_COUNT = 3; // リールの数
-		const AUTO_STOP_TIMINGS = [2000, 2600, 3200]; // 自動停止モードの各リール停止時間(ms)
+		const AUTO_STOP_TIMINGS = [2000, 2800, 3600]; // 自動停止モードの各リール停止時間(ms)
 
 		// アニメーション関連
 		const maxSpeed = 7.5; // 最高速度（1フレームあたりのピクセル移動量）
@@ -264,8 +264,8 @@
 			if (modeAuto) {
 				actionBtn.disabled = true; // 自動モード中はボタンを無効化
 				AUTO_STOP_TIMINGS.forEach((time, index) => {
-					// 停止時間に±200msのランダムな揺らぎを追加します。
-					const randomTime = time + (Math.random() * 400 - 200);
+					// 停止時間に±500ms(0.5秒)のランダムな揺らぎを追加します。
+					const randomTime = time + (Math.random() * 1000 - 500);
 					setTimeout(() => stopReel(index), randomTime);
 				});
 			} else {
