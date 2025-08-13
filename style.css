@@ -1,0 +1,123 @@
+/* :root疑似クラスを使用して、ドキュメント全体で利用可能なCSSカスタムプロパティ（変数）を定義します */
+:root {
+    --background-color: #222;
+    --text-color: white;
+    --container-border-color: #555;
+    --container-background-color: #000;
+    --reel-border-color: #444;
+    --reel-background-color: #111;
+    --button-background-color: #f0f0f0;
+    --button-text-color: #333;
+    --button-hover-background-color: #ddd;
+}
+
+/* ページ全体の基本的なスタイルを設定します */
+body {
+    /* 背景色を目に優しい濃い灰色に設定します */
+    background: var(--background-color);
+    /* テキストの色を白に設定し、背景とのコントラストを確保します */
+    color: var(--text-color);
+    /* コンピュータにインストールされている基本的なサンセリフフォントを使用します */
+    font-family: sans-serif;
+    /* ページ内のすべてのテキストや要素を中央に配置します */
+    text-align: center;
+}
+
+/* スロットマシン全体を囲むコンテナのスタイルです */
+.slot-container {
+    /* 中のリール（.reel）を横一列に並べるためにflexboxを使用します */
+    display: inline-flex;
+    /* コンテナの周りに中太の灰色の枠線を描画します */
+    border: 5px solid var(--container-border-color);
+    /* コンテナの背景色を黒に設定します */
+    background: var(--container-background-color);
+    /* 枠線の内側に10ピクセルの余白を設けます */
+    padding: 10px;
+    /* 上下に20ピクセル、左右は自動で中央配置になるように余白を設定します */
+    margin: 20px auto;
+}
+
+/* 個々のリール（シンボルが回転する列）のスタイルです */
+.reel {
+    /* リールの幅を80ピクセルに設定します */
+    width: 80px;
+    /* リールの高さを240ピクセルに設定します。これにより、常に3つのシンボルが見える状態になります */
+    height: 240px;
+    /* リールの高さを超えて表示されるシンボルを隠します。これにより、回転がリール内で完結しているように見えます */
+    overflow: hidden;
+    /* 各リールの周りに細い灰色の枠線を描画します */
+    border: 2px solid var(--reel-border-color);
+    /* 隣接するリールとの間に左右5ピクセルの間隔を設けます */
+    margin: 0 5px;
+    /* リールの背景色を非常に濃い灰色に設定します */
+    background: var(--reel-background-color);
+    /* 子要素（.symbols）を絶対位置で配置するための基準点とします */
+    position: relative;
+}
+
+/* シンボル全体を縦に並べて保持するコンテナのスタイルです */
+.symbols {
+    /* 親要素（.reel）を基準とした絶対位置に配置します */
+    position: absolute;
+    /* 親要素の上端に配置します */
+    top: 0;
+    /* 親要素の左端に配置します */
+    left: 0;
+    /* 親要素の右端まで幅を広げます */
+    right: 0;
+    /* これから変形(transform)が起こることをブラウザに伝え、描画を最適化させます */
+    will-change: transform;
+}
+
+/* 個々のシンボル（絵文字）のスタイルです */
+.symbol {
+    /* 各シンボルの高さを80ピクセルに設定します。これはリールの高さ(240px)の3分の1です */
+    height: 80px;
+    /* シンボルとして使用する絵文字のフォントサイズを50ピクセルに設定します */
+    font-size: 50px;
+    /* 行の高さをシンボルの高さと同じ80pxに設定することで、絵文字を垂直方向の中央に配置します */
+    line-height: 80px;
+    /* ユーザーがテキストを選択できないようにします */
+    user-select: none;
+}
+
+/* BARシンボルに適用する特別なスタイル */
+.symbol.bar {
+    font-size: 40px; /* フォントサイズを少し小さくする */
+    font-weight: bold; /* 太字にする */
+}
+
+
+/* ボタン（スタート/ストップ、モード切替）に共通のスタイルです */
+button {
+    /* ボタンの周囲に10ピクセルの余白を設けます */
+    margin: 10px;
+    /* ボタンの内部に、上下10ピクセル、左右20ピクセルの余白を設けます */
+    padding: 10px 20px;
+    /* ボタン内のテキストのフォントサイズを16ピクセルに設定します */
+    font-size: 16px;
+    /* ボタンの枠線をなくします */
+    border: none;
+    /* 角を少し丸くします */
+    border-radius: 5px;
+    /* マウスカーソルが乗ったときに、ポインター（指の形）に変わるようにします */
+    cursor: pointer;
+    /* 背景色と文字色をカスタムプロパティから設定します */
+    background-color: var(--button-background-color);
+    color: var(--button-text-color);
+    /* 背景色の変化を滑らかにするためのトランジションを設定します */
+    transition: background-color 0.2s ease;
+}
+
+/* ボタンにマウスが乗った（ホバーした）ときのスタイルです */
+button:hover {
+    background-color: var(--button-hover-background-color);
+}
+
+/* ボタンが無効化されたときのスタイルです */
+button:disabled {
+    /* 透明度を下げて、操作できないことを視覚的に示します */
+    opacity: 0.6;
+    /* マウスカーソルが「許可しない」アイコンに変わるようにします */
+    cursor: not-allowed;
+}
