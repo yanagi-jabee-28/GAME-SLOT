@@ -121,28 +121,39 @@ function fillReel(reelEl) {
  */
 function startReel(index) {
   spinning[index] = true;
+  // 現在のtop位置を取得。pxを削除し、数値に変換。初回は0。
   let pos = parseFloat(reels[index].style.top.replace('px', '')) * -1 || 0;
+  // アニメーション開始時間を記録
   const startTime = performance.now();
 
   function animate(currentTime) {
+    // 停止フラグが立っていたらアニメーションを終了
     if (!spinning[index]) return;
 
+    // 経過時間
     const elapsed = currentTime - startTime;
     let currentSpeed;
 
+    // 加速処理
     if (elapsed < accelerationTime) {
-      const progress = elapsed / accelerationTime;
-      const ease = progress * progress * progress; // easeInCubic
+      // 加速時間内であれば、経過時間に応じて速度を上げる (ease-in効果)
+      const progress = elapsed / accelerationTime; // 0から1への進捗度
+      const ease = progress * progress * progress; // easeInCubic: 最初はゆっくりで、だんだん速くなる
       currentSpeed = maxSpeed * ease;
     } else {
+      // 加速時間を超えたら最高速度を維持
       currentSpeed = maxSpeed;
     }
 
+    // 新しい位置を計算。シンボル全体の高さを超えたら0に戻す（ループさせる）
     pos = (pos + currentSpeed) % (symbols.length * SYMBOL_HEIGHT);
+    // 新しい位置をstyleに適用
     reels[index].style.top = -pos + 'px';
 
+    // 次のフレームで再度animate関数を呼び出す
     animationFrameId[index] = requestAnimationFrame(animate);
   }
+  // アニメーションを開始
   requestAnimationFrame(animate);
 }
 
@@ -150,36 +161,54 @@ function startReel(index) {
  * 指定されたインデックスのリールを停止させる関数
  */
 function stopReel(index) {
+  // すでに停止しているか、回転中でなければ何もしない
   if (!spinning[index]) return;
 
+  // 回転アニメーションをキャンセル
   cancelAnimationFrame(animationFrameId[index]);
 
+  // 現在のリールのY軸位置を取得
   let currentTop = parseInt(reels[index].style.top || '0');
+  // シンボルリスト1周分の合計の高さ
   const totalSymbolHeight = symbols.length * SYMBOL_HEIGHT;
+  // 現在の位置をシンボル1周分の高さで正規化（剰余を計算）
   let posMod = ((-currentTop) % totalSymbolHeight + totalSymbolHeight) % totalSymbolHeight;
+  // 最も近い停止位置（シンボルの上端）からのズレを計算
   let remainder = posMod % SYMBOL_HEIGHT;
+  // 次のシンボルの上端にぴったり停止するための移動距離を計算
   let distanceToNext = (SYMBOL_HEIGHT - remainder) % SYMBOL_HEIGHT;
 
+  // 停止アニメーションにかける時間を計算。移動距離が長いほど少し長くする
   let timeNeeded = Math.ceil(distanceToNext / maxSpeed) * 20;
+  // アニメーション時間が極端に短/長くなりすぎないように、最小値と最大値の範囲に収める
   timeNeeded = Math.min(Math.max(timeNeeded, MIN_STOP_ANIMATION_TIME), MAX_STOP_ANIMATION_TIME);
 
+  // 停止アニメーションの開始時間と開始位置を記録
   const start = performance.now();
   const startTop = currentTop;
+  // 最終的な停止位置を計算
   const targetTop = currentTop - distanceToNext;
 
+  // 停止アニメーション用の関数
   function animateStop(now) {
+    // 経過時間と進捗度(0-1)を計算
     let elapsed = now - start;
     let progress = Math.min(elapsed / timeNeeded, 1);
+    // イージング（ease-out効果）を適用して、だんだんゆっくり停止するように見せる
     let ease = 1 - Math.pow(1 - progress, 3); // easeOutCubic
+    // 現在の位置を計算してstyleに適用
     reels[index].style.top = startTop - (distanceToNext * ease) + 'px';
 
+    // アニメーションが完了していなければ、次のフレームを要求
     if (progress < 1) {
       requestAnimationFrame(animateStop);
     } else {
-      spinning[index] = false;
-      reels[index].style.top = targetTop + 'px';
+      // アニメーション完了後
+      spinning[index] = false; // 停止フラグを立てる
+      reels[index].style.top = targetTop + 'px'; // 最終位置に正確に設定
     }
   }
+  // 停止アニメーションを開始
   requestAnimationFrame(animateStop);
 }
 
