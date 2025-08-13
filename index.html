@@ -1,120 +1,178 @@
 <!DOCTYPE html>
+<!-- 日本語の文書であることを示す -->
 <html lang="ja">
 <head>
+<!-- 文字コードをUTF-8に設定 -->
 <meta charset="UTF-8">
+<!-- ブラウザのタブに表示されるタイトル -->
 <title>3x3 スロットゲーム</title>
+<!-- ここからスタイルシート（見た目の設定） -->
 <style>
+  /* ページ全体の基本スタイル */
   body {
-    background: #222;
-    color: white;
-    font-family: sans-serif;
-    text-align: center;
+    background: #222; /* 背景色を濃い灰色に */
+    color: white; /* 文字色を白に */
+    font-family: sans-serif; /* フォントの種類を指定 */
+    text-align: center; /* 全ての要素を中央揃えに */
   }
+  /* スロットマシン全体のコンテナ */
   .slot-container {
-    display: inline-flex;
-    border: 5px solid #555;
-    background: #000;
-    padding: 10px;
-    margin: 20px auto;
+    display: inline-flex; /* リールを横並びにする */
+    border: 5px solid #555; /* 枠線を設定 */
+    background: #000; /* 背景色を黒に */
+    padding: 10px; /* 内側の余白 */
+    margin: 20px auto; /* 外側の余白 */
   }
+  /* 各リールのスタイル */
   .reel {
-    width: 80px;
-    height: 240px;
-    overflow: hidden;
-    border: 2px solid #444;
-    margin: 0 5px;
-    background: #111;
-    position: relative;
+    width: 80px; /* 幅 */
+    height: 240px; /* 高さ（シンボル3つ分が見える高さ） */
+    overflow: hidden; /* はみ出したシンボルを隠す */
+    border: 2px solid #444; /* 枠線 */
+    margin: 0 5px; /* 隣のリールとの間隔 */
+    background: #111; /* 背景色 */
+    position: relative; /* 子要素の配置の基準にする */
   }
+  /* シンボルを縦に並べるためのコンテナ */
   .symbols {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
+    position: absolute; /* 親要素(.reel)を基準に絶対位置で配置 */
+    top: 0; /* 上端を基準に */
+    left: 0; /* 左端を基準に */
+    right: 0; /* 右端を基準に */
   }
+  /* 各シンボルのスタイル */
   .symbol {
-    height: 80px;
-    font-size: 50px;
-    line-height: 80px;
+    height: 80px; /* 高さ */
+    font-size: 50px; /* 絵文字のサイズ */
+    line-height: 80px; /* 高さと合わせて中央揃えにする */
   }
+  /* ボタンの共通スタイル */
   button {
-    margin: 10px;
-    padding: 10px 20px;
-    font-size: 16px;
+    margin: 10px; /* 外側の余白 */
+    padding: 10px 20px; /* 内側の余白 */
+    font-size: 16px; /* 文字サイズ */
   }
 </style>
+<!-- スタイルシートここまで -->
 </head>
 <body>
+
+<!-- ゲームのメインタイトル -->
 <h1>🎰 3x3 スロットゲーム 🎰</h1>
+
+<!-- スロットマシンのHTML構造 -->
 <div class="slot-container" id="slot">
+  <!-- 3つのリールを配置 -->
   <div class="reel" id="reel0"><div class="symbols"></div></div>
   <div class="reel" id="reel1"><div class="symbols"></div></div>
   <div class="reel" id="reel2"><div class="symbols"></div></div>
 </div>
 <br>
+<!-- 操作ボタン -->
 <button id="startBtn">▶ スタート</button>
 <button id="stopBtn">⏸ 停止（目押し）</button>
 <button id="modeBtn">モード: 自動</button>
 
+<!-- ここからJavaScript（ゲームのロジック） -->
 <script>
-const symbols = ["🍒","🍋","🔔","⭐","7️⃣"];
-const reels = [document.querySelector('#reel0 .symbols'),
-               document.querySelector('#reel1 .symbols'),
-               document.querySelector('#reel2 .symbols')];
-let spinning = [false,false,false];
-let spinInterval = [null,null,null];
-let modeAuto = true;
-let stopCount = 0;
-const speed = 10; // px per frame (50ms)
+// --- 設定値（ゲームバランスの調整はここで行う） ---
+// シンボル関連
+const SYMBOL_HEIGHT = 80; // px単位。CSSの.symbolのheightと合わせる
+const symbols = ["🍒","🍋","🔔","⭐","7️⃣"]; // スロットのシンボル
 
+// リール関連
+const REEL_COUNT = 3; // リールの数
+const AUTO_STOP_TIMINGS = [1000, 1600, 2200]; // 自動停止モードの各リール停止時間(ms)
+
+// アニメーション関連
+const maxSpeed = 7.5; // 最高速度（1フレームあたりのピクセル移動量）
+const accelerationTime = 1000; // 最高速度に達するまでの時間(ms)
+const MIN_STOP_ANIMATION_TIME = 100; // 停止アニメーションの最短時間(ms)
+const MAX_STOP_ANIMATION_TIME = 1000; // 停止アニメーションの最長時間(ms)
+// --- 設定値ここまで ---
+
+// --- 内部変数（直接編集しない） ---
+const reels = [];
+for (let i = 0; i < REEL_COUNT; i++) {
+  reels.push(document.querySelector(`#reel${i} .symbols`));
+}
+let spinning = new Array(REEL_COUNT).fill(false); // 各リールが回転中かどうかのフラグ
+let animationFrameId = new Array(REEL_COUNT).fill(null); // アニメーションID
+let modeAuto = true; // true:自動停止モード, false:目押しモード
+let stopCount = 0; // 目押しモードで停止させたリールの数
+// --- 内部変数ここまで ---
+
+/**
+ * 指定されたリールにシンボルをセットする関数
+ */
 function fillReel(reelEl) {
-  reelEl.innerHTML = '';
-  for (let i = 0; i < symbols.length; i++) {
+  reelEl.innerHTML = ''; // 中身を一旦空にする
+  // シンボルの配列を2周分追加する（無限ループしているように見せるため）
+  for (let i = 0; i < symbols.length * 2; i++) {
     let div = document.createElement('div');
     div.className = 'symbol';
-    div.textContent = symbols[i];
-    reelEl.appendChild(div);
-  }
-  for (let i = 0; i < symbols.length; i++) {
-    let div = document.createElement('div');
-    div.className = 'symbol';
-    div.textContent = symbols[i];
+    div.textContent = symbols[i % symbols.length];
     reelEl.appendChild(div);
   }
 }
 
+/**
+ * 指定されたインデックスのリールを回転させる関数
+ */
 function startReel(index) {
   spinning[index] = true;
-  let pos = 0;
-  spinInterval[index] = setInterval(() => {
-    pos = (pos + speed) % (symbols.length * 80);
+  let pos = parseFloat(reels[index].style.top.replace('px', '')) * -1 || 0;
+  const startTime = performance.now();
+
+  function animate(currentTime) {
+    if (!spinning[index]) return;
+
+    const elapsed = currentTime - startTime;
+    let currentSpeed;
+
+    if (elapsed < accelerationTime) {
+      const progress = elapsed / accelerationTime;
+      const ease = progress * progress * progress; // easeInCubic
+      currentSpeed = maxSpeed * ease;
+    } else {
+      currentSpeed = maxSpeed;
+    }
+
+    pos = (pos + currentSpeed) % (symbols.length * SYMBOL_HEIGHT);
     reels[index].style.top = -pos + 'px';
-  }, 50);
-  reels[index].dataset.pos = 0;
+
+    animationFrameId[index] = requestAnimationFrame(animate);
+  }
+  requestAnimationFrame(animate);
 }
 
+/**
+ * 指定されたインデックスのリールを停止させる関数
+ */
 function stopReel(index) {
   if (!spinning[index]) return;
+
+  cancelAnimationFrame(animationFrameId[index]);
+
   let currentTop = parseInt(reels[index].style.top || '0');
-  let posMod = ((-currentTop) % (symbols.length * 80) + (symbols.length * 80)) % (symbols.length * 80);
-  let remainder = posMod % 80;
-  let distanceToNext = (80 - remainder) % 80;
-  let framesNeeded = Math.ceil(distanceToNext / speed);
-  let timeNeeded = framesNeeded * 50;
+  const totalSymbolHeight = symbols.length * SYMBOL_HEIGHT;
+  let posMod = ((-currentTop) % totalSymbolHeight + totalSymbolHeight) % totalSymbolHeight;
+  let remainder = posMod % SYMBOL_HEIGHT;
+  let distanceToNext = (SYMBOL_HEIGHT - remainder) % SYMBOL_HEIGHT;
 
-  timeNeeded = Math.min(Math.max(timeNeeded, 100), 1000);
+  let timeNeeded = Math.ceil(distanceToNext / maxSpeed) * 20;
+  timeNeeded = Math.min(Math.max(timeNeeded, MIN_STOP_ANIMATION_TIME), MAX_STOP_ANIMATION_TIME);
 
-  clearInterval(spinInterval[index]);
-
-  let start = performance.now();
-  let startTop = currentTop;
-  let targetTop = currentTop - distanceToNext;
+  const start = performance.now();
+  const startTop = currentTop;
+  const targetTop = currentTop - distanceToNext;
 
   function animateStop(now) {
     let elapsed = now - start;
     let progress = Math.min(elapsed / timeNeeded, 1);
     let ease = 1 - Math.pow(1 - progress, 3); // easeOutCubic
-    reels[index].style.top = startTop + (targetTop - startTop) * ease + 'px';
+    reels[index].style.top = startTop - (distanceToNext * ease) + 'px';
+
     if (progress < 1) {
       requestAnimationFrame(animateStop);
     } else {
@@ -122,29 +180,36 @@ function stopReel(index) {
       reels[index].style.top = targetTop + 'px';
     }
   }
-
   requestAnimationFrame(animateStop);
 }
 
+/**
+ * ゲームを開始する関数
+ */
 function startGame() {
   stopCount = 0;
-  for (let i=0;i<3;i++) {
+  for (let i = 0; i < REEL_COUNT; i++) {
     startReel(i);
   }
   if (modeAuto) {
-    setTimeout(()=>stopReel(0),1000);
-    setTimeout(()=>stopReel(1),1600);
-    setTimeout(()=>stopReel(2),2200);
+    AUTO_STOP_TIMINGS.forEach((time, index) => {
+      setTimeout(() => stopReel(index), time);
+    });
   }
 }
 
+/**
+ * 目押しモードで手動停止する関数
+ */
 function stopManual() {
   if (modeAuto) return;
-  if (stopCount < 3) {
+  if (stopCount < REEL_COUNT) {
     stopReel(stopCount);
     stopCount++;
   }
 }
+
+// --- イベントリスナーの設定 ---
 
 document.getElementById('startBtn').addEventListener('click', startGame);
 document.getElementById('stopBtn').addEventListener('click', stopManual);
@@ -153,7 +218,10 @@ document.getElementById('modeBtn').addEventListener('click', () => {
   document.getElementById('modeBtn').textContent = 'モード: ' + (modeAuto ? '自動' : '目押し');
 });
 
+// --- 初期化処理 ---
 reels.forEach(fillReel);
+
 </script>
+<!-- JavaScriptここまで -->
 </body>
 </html>
