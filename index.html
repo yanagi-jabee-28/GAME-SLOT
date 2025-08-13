@@ -90,7 +90,7 @@ const reelsData = [
 
 // リール関連
 const REEL_COUNT = 3; // リールの数
-const AUTO_STOP_TIMINGS = [1000, 1600, 2200]; // 自動停止モードの各リール停止時間(ms)
+const AUTO_STOP_TIMINGS = [1500, 2100, 2700]; // 自動停止モードの各リール停止時間(ms)
 
 // アニメーション関連
 const maxSpeed = 7.5; // 最高速度（1フレームあたりのピクセル移動量）
@@ -221,7 +221,9 @@ function startGame() {
   if (modeAuto) {
     actionBtn.disabled = true; // 自動モード中はボタンを無効化
     AUTO_STOP_TIMINGS.forEach((time, index) => {
-      setTimeout(() => stopReel(index), time);
+      // 停止時間に±200msのランダムな揺らぎを追加します。
+      const randomTime = time + (Math.random() * 400 - 200);
+      setTimeout(() => stopReel(index), randomTime);
     });
   } else {
     actionBtn.textContent = '⏸ 停止'; // 目押しモードの場合、ボタンのテキストを変更
