@@ -69,8 +69,7 @@
 </div>
 <br>
 <!-- 操作ボタン -->
-<button id="startBtn">▶ スタート</button>
-<button id="stopBtn">⏸ 停止（目押し）</button>
+<button id="actionBtn">▶ スタート</button>
 <button id="modeBtn">モード: 自動</button>
 
 <!-- ここからJavaScript（ゲームのロジック） -->
@@ -78,7 +77,16 @@
 // --- 設定値（ゲームバランスの調整はここで行う） ---
 // シンボル関連
 const SYMBOL_HEIGHT = 80; // px単位。CSSの.symbolのheightと合わせる
-const symbols = ["🍒","🍋","🔔","⭐","7️⃣"]; // スロットのシンボル
+
+// 各リールのシンボル構成を定義します。
+const reelsData = [
+  // 左リール: A=🍑, B=🍋, C=🍎, D=💎, E=🍉, F='BAR', G=🍒, H=🍇, 7=7️⃣
+  ['🍑', '🍋', '🍎', '🍑', '🍋', '💎', '🍉', '🍑', '🍋', 'BAR', '🍒', '🍎', '🍑', '🍋', '🍉', '🍑', '🍋', '7️⃣', '🍇', '7️⃣', '🍇'],
+  // 中央リール
+  ['🍑', '🍒', '🍋', '🍑', '🍎', '💎', '🍉', '🍋', '🍑', '🍒', 'BAR', '🍒', '🍋', '🍑', '🍉', '🍋', '🍑', '🍇', '7️⃣', '🍇', '🍋'],
+  // 右リール
+  ['🍋', '🍎', '🍑', '🍋', '🍉', '💎', '🍑', '🍋', '🍒', 'BAR', '🍑', '🍋', '🍉', '🍎', '🍑', '🍋', '🍇', '7️⃣', '🍇', '7️⃣', '🍑']
+];
 
 // リール関連
 const REEL_COUNT = 3; // リールの数
@@ -91,11 +99,15 @@ const MIN_STOP_ANIMATION_TIME = 100; // 停止アニメーションの最短時�
 const MAX_STOP_ANIMATION_TIME = 1000; // 停止アニメーションの最長時間(ms)
 // --- 設定値ここまで ---
 
-// --- 内部変数（直接編集しない） ---
+// --- DOM要素の取得 ---
 const reels = [];
 for (let i = 0; i < REEL_COUNT; i++) {
   reels.push(document.querySelector(`#reel${i} .symbols`));
 }
+const actionBtn = document.getElementById('actionBtn');
+const modeBtn = document.getElementById('modeBtn');
+
+// --- 内部変数（直接編集しない） ---
 let spinning = new Array(REEL_COUNT).fill(false); // 各リールが回転中かどうかのフラグ
 let animationFrameId = new Array(REEL_COUNT).fill(null); // アニメーションID
 let modeAuto = true; // true:自動停止モード, false:目押しモード
@@ -104,14 +116,22 @@ let stopCount = 0; // 目押しモードで停止させたリールの数
 
 /**
  * 指定されたリールにシンボルをセットする関数
+ * @param {HTMLElement} reelEl - シンボルを配置するリールの要素
+ * @param {number} reelIndex - リールのインデックス（0から）
  */
-function fillReel(reelEl) {
+function fillReel(reelEl, reelIndex) {
   reelEl.innerHTML = ''; // 中身を一旦空にする
+  const currentReelSymbols = reelsData[reelIndex]; // 現在のリールに対応するシンボルの配列を取得
   // シンボルの配列を2周分追加する（無限ループしているように見せるため）
-  for (let i = 0; i < symbols.length * 2; i++) {
+  for (let i = 0; i < currentReelSymbols.length * 2; i++) {
     let div = document.createElement('div');
     div.className = 'symbol';
-    div.textContent = symbols[i % symbols.length];
+    // 'BAR'の時だけ文字サイズを調整する
+    if (currentReelSymbols[i % currentReelSymbols.length] === 'BAR') {
+        div.style.fontSize = '40px';
+        div.style.fontWeight = 'bold';
+    }
+    div.textContent = currentReelSymbols[i % currentReelSymbols.length];
     reelEl.appendChild(div);
   }
 }
@@ -121,39 +141,25 @@ function fillReel(reelEl) {
  */
 function startReel(index) {
   spinning[index] = true;
-  // 現在のtop位置を取得。pxを削除し、数値に変換。初回は0。
   let pos = parseFloat(reels[index].style.top.replace('px', '')) * -1 || 0;
-  // アニメーション開始時間を記録
   const startTime = performance.now();
+  const currentReelSymbols = reelsData[index];
 
   function animate(currentTime) {
-    // 停止フラグが立っていたらアニメーションを終了
     if (!spinning[index]) return;
-
-    // 経過時間
     const elapsed = currentTime - startTime;
     let currentSpeed;
-
-    // 加速処理
     if (elapsed < accelerationTime) {
-      // 加速時間内であれば、経過時間に応じて速度を上げる (ease-in効果)
-      const progress = elapsed / accelerationTime; // 0から1への進捗度
-      const ease = progress * progress * progress; // easeInCubic: 最初はゆっくりで、だんだん速くなる
+      const progress = elapsed / accelerationTime;
+      const ease = progress * progress * progress;
       currentSpeed = maxSpeed * ease;
     } else {
-      // 加速時間を超えたら最高速度を維持
       currentSpeed = maxSpeed;
     }
-
-    // 新しい位置を計算。シンボル全体の高さを超えたら0に戻す（ループさせる）
-    pos = (pos + currentSpeed) % (symbols.length * SYMBOL_HEIGHT);
-    // 新しい位置をstyleに適用
+    pos = (pos + currentSpeed) % (currentReelSymbols.length * SYMBOL_HEIGHT);
     reels[index].style.top = -pos + 'px';
-
-    // 次のフレームで再度animate関数を呼び出す
     animationFrameId[index] = requestAnimationFrame(animate);
   }
-  // アニメーションを開始
   requestAnimationFrame(animate);
 }
 
@@ -161,54 +167,42 @@ function startReel(index) {
  * 指定されたインデックスのリールを停止させる関数
  */
 function stopReel(index) {
-  // すでに停止しているか、回転中でなければ何もしない
   if (!spinning[index]) return;
-
-  // 回転アニメーションをキャンセル
   cancelAnimationFrame(animationFrameId[index]);
 
-  // 現在のリールのY軸位置を取得
+  const currentReelSymbols = reelsData[index];
   let currentTop = parseInt(reels[index].style.top || '0');
-  // シンボルリスト1周分の合計の高さ
-  const totalSymbolHeight = symbols.length * SYMBOL_HEIGHT;
-  // 現在の位置をシンボル1周分の高さで正規化（剰余を計算）
+  const totalSymbolHeight = currentReelSymbols.length * SYMBOL_HEIGHT;
   let posMod = ((-currentTop) % totalSymbolHeight + totalSymbolHeight) % totalSymbolHeight;
-  // 最も近い停止位置（シンボルの上端）からのズレを計算
   let remainder = posMod % SYMBOL_HEIGHT;
-  // 次のシンボルの上端にぴったり停止するための移動距離を計算
   let distanceToNext = (SYMBOL_HEIGHT - remainder) % SYMBOL_HEIGHT;
 
-  // 停止アニメーションにかける時間を計算。移動距離が長いほど少し長くする
   let timeNeeded = Math.ceil(distanceToNext / maxSpeed) * 20;
-  // アニメーション時間が極端に短/長くなりすぎないように、最小値と最大値の範囲に収める
   timeNeeded = Math.min(Math.max(timeNeeded, MIN_STOP_ANIMATION_TIME), MAX_STOP_ANIMATION_TIME);
 
-  // 停止アニメーションの開始時間と開始位置を記録
   const start = performance.now();
   const startTop = currentTop;
-  // 最終的な停止位置を計算
   const targetTop = currentTop - distanceToNext;
 
-  // 停止アニメーション用の関数
   function animateStop(now) {
-    // 経過時間と進捗度(0-1)を計算
     let elapsed = now - start;
     let progress = Math.min(elapsed / timeNeeded, 1);
-    // イージング（ease-out効果）を適用して、だんだんゆっくり停止するように見せる
-    let ease = 1 - Math.pow(1 - progress, 3); // easeOutCubic
-    // 現在の位置を計算してstyleに適用
+    let ease = 1 - Math.pow(1 - progress, 3);
     reels[index].style.top = startTop - (distanceToNext * ease) + 'px';
 
-    // アニメーションが完了していなければ、次のフレームを要求
     if (progress < 1) {
       requestAnimationFrame(animateStop);
     } else {
-      // アニメーション完了後
-      spinning[index] = false; // 停止フラグを立てる
-      reels[index].style.top = targetTop + 'px'; // 最終位置に正確に設定
+      spinning[index] = false;
+      reels[index].style.top = targetTop + 'px';
+      // 全てのリールが停止したかチェック
+      const allStopped = spinning.every(s => !s);
+      if (allStopped) {
+        actionBtn.textContent = '▶ スタート';
+        actionBtn.disabled = false;
+      }
     }
   }
-  // 停止アニメーションを開始
   requestAnimationFrame(animateStop);
 }
 
@@ -216,14 +210,21 @@ function stopReel(index) {
  * ゲームを開始する関数
  */
 function startGame() {
+  // いずれかのリールが回転中なら処理しない
+  if (spinning.some(s => s)) return;
+
   stopCount = 0;
   for (let i = 0; i < REEL_COUNT; i++) {
     startReel(i);
   }
+
   if (modeAuto) {
+    actionBtn.disabled = true; // 自動モード中はボタンを無効化
     AUTO_STOP_TIMINGS.forEach((time, index) => {
       setTimeout(() => stopReel(index), time);
     });
+  } else {
+    actionBtn.textContent = '⏸ 停止'; // 目押しモードの場合、ボタンのテキストを変更
   }
 }
 
@@ -231,24 +232,43 @@ function startGame() {
  * 目押しモードで手動停止する関数
  */
 function stopManual() {
-  if (modeAuto) return;
+  if (modeAuto || !spinning[stopCount]) return; // 自動モードなら何もしない、または回転中でなければ何もしない
   if (stopCount < REEL_COUNT) {
     stopReel(stopCount);
     stopCount++;
+    // 最後のリールを停止させたら、ボタンを無効化
+    if (stopCount === REEL_COUNT) {
+        actionBtn.disabled = true;
+    }
+  }
+}
+
+/**
+ * スタート・ストップボタンのメイン処理
+ */
+function handleAction() {
+  const isGameSpinning = spinning.some(s => s);
+  if (isGameSpinning) {
+    stopManual();
+  }
+  else {
+    startGame();
   }
 }
 
 // --- イベントリスナーの設定 ---
+actionBtn.addEventListener('click', handleAction);
 
-document.getElementById('startBtn').addEventListener('click', startGame);
-document.getElementById('stopBtn').addEventListener('click', stopManual);
-document.getElementById('modeBtn').addEventListener('click', () => {
+modeBtn.addEventListener('click', () => {
+  // ゲーム回転中はモード変更不可
+  if (spinning.some(s => s)) return;
   modeAuto = !modeAuto;
-  document.getElementById('modeBtn').textContent = 'モード: ' + (modeAuto ? '自動' : '目押し');
+  modeBtn.textContent = 'モード: ' + (modeAuto ? '自動' : '目押し');
 });
 
 // --- 初期化処理 ---
-reels.forEach(fillReel);
+// 各リール要素とそのインデックスを渡して、リールを初期化します。
+reels.forEach((reel, index) => fillReel(reel, index));
 
 </script>
 <!-- JavaScriptここまで -->
