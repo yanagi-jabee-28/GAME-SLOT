@@ -32,7 +32,7 @@ const gameConfig = {
     initialIsAutoMode: true,             // 初期ゲームモード (true: 自動, false: 目押し)
 
     // --- アニメーションと速度設定 ---
-    autoSpeed: 20,         // 自動モード時のリール回転速度 (ピクセル/フレーム)
+    autoSpeed: 40,         // 自動モード時のリール回転速度 (ピクセル/フレーム)
     manualSpeed: 10,       // 目押しモード時のリール回転速度 (ピクセル/フレーム)
     accelerationTime: 1000, // スピン開始から最高速に達するまでの加速時間 (ms)
     minStopAnimTime: 10,  // 停止アニメーションの最短時間 (ms)
@@ -40,6 +40,6 @@ const gameConfig = {
     reverseRotation: true, // リールの回転方向 (true: 下から上へ, false: 上から下へ)
 
     // --- 自動モード設定 ---
-    autoStopTimings: [1500, 2100, 2700], // 各リールの自動停止タイミング (ms)
+    autoStopTimings: [1800, 2400, 3000], // 各リールの自動停止タイミング (ms)
     autoStopTimeRandomness: 300,         // 自動停止タイミングのランダムな揺らぎ幅 (ms)
 };
