@@ -97,7 +97,7 @@ const gameConfig = {
 
 	// --- 当たり演出制御 ---
 	// 備考: ここで設定した確率で、水平または斜めの当たり演出が発動します。
-	winHorizontalProbability: 0.15, // 水平ラインで当たりを発生させる確率 (0.0 ~ 1.0)。
+	winHorizontalProbability: 0.2, // 水平ラインで当たりを発生させる確率 (0.0 ~ 1.0)。
 	winDiagonalProbability: 0.1,   // 斜めラインで当たりを発生させる確率 (0.0 ~ 1.0)。
 
 	/* --- (旧方式: 後方互換のための参考) ---
