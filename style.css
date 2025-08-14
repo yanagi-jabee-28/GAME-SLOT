@@ -5,99 +5,149 @@
 
 /* :root疑似クラス: ドキュメント全体で利用可能なグローバル変数を定義します */
 :root {
-    /* 色に関する設定値: デザインの変更やテーマの切り替えを容易にします */
-    --background-color: #222;                   /* ページ全体の背景色 */
-    --text-color: white;                       /* 基本の文字色 */
-    --container-border-color: #555;            /* スロット外枠のボーダー色 */
-    --container-background-color: #000;        /* スロット外枠の背景色 */
-    --reel-border-color: #444;                 /* 各リールのボーダー色 */
-    --reel-background-color: #111;              /* 各リールの背景色 */
-    --button-background-color: #f0f0f0;         /* ボタンの背景色 */
-    --button-text-color: #333;                 /* ボタンの文字色 */
-    --button-hover-background-color: #ddd;     /* ボタンホバー時の背景色 */
+	/* 色に関する設定値: デザインの変更やテーマの切り替えを容易にします */
+	--background-color: #222;
+	/* ページ全体の背景色 */
+	--text-color: white;
+	/* 基本の文字色 */
+	--container-border-color: #555;
+	/* スロット外枠のボーダー色 */
+	--container-background-color: #000;
+	/* スロット外枠の背景色 */
+	--reel-border-color: #444;
+	/* 各リールのボーダー色 */
+	--reel-background-color: #111;
+	/* 各リールの背景色 */
+	--button-background-color: #f0f0f0;
+	/* ボタンの背景色 */
+	--button-text-color: #333;
+	/* ボタンの文字色 */
+	--button-hover-background-color: #ddd;
+	/* ボタンホバー時の背景色 */
 }
 
 /* body: ページ全体の基本的なスタイルを設定します */
 body {
-    background: var(--background-color);       /* 背景色をカスタムプロパティから設定 */
-    color: var(--text-color);                  /* 文字色をカスタムプロパティから設定 */
-    font-family: sans-serif;                   /* フォントは一般的なサンセリフ体を指定 */
-    text-align: center;                        /* 全ての要素を中央揃えに */
-    margin: 0;                                 /* ブラウザデフォルトの余白をリセット */
-    padding-top: 20px;                         /* ページ上部に余白を設ける */
+	background: var(--background-color);
+	/* 背景色をカスタムプロパティから設定 */
+	color: var(--text-color);
+	/* 文字色をカスタムプロパティから設定 */
+	font-family: sans-serif;
+	/* フォントは一般的なサンセリフ体を指定 */
+	text-align: center;
+	/* 全ての要素を中央揃えに */
+	margin: 0;
+	/* ブラウザデフォルトの余白をリセット */
+	padding-top: 20px;
+	/* ページ上部に余白を設ける */
 }
 
 /* .slot-container: スロットマシン全体を囲むコンテナ */
 .slot-container {
-    display: inline-flex;                      /* 中のリールを横一列に並べるためflexboxを利用 */
-    border: 5px solid var(--container-border-color); /* 枠線を設定 */
-    background: var(--container-background-color);   /* 背景色を設定 */
-    padding: 10px;                             /* 内側の余白 */
-    margin: 20px auto;                         /* 上下の余白と、左右の自動中央配置 */
-    border-radius: 10px;                       /* 角を丸くして柔らかい印象に */
+	display: inline-flex;
+	/* 中のリールを横一列に並べるためflexboxを利用 */
+	border: 5px solid var(--container-border-color);
+	/* 枠線を設定 */
+	background: var(--container-background-color);
+	/* 背景色を設定 */
+	padding: 10px;
+	/* 内側の余白 */
+	margin: 20px auto;
+	/* 上下の余白と、左右の自動中央配置 */
+	border-radius: 10px;
+	/* 角を丸くして柔らかい印象に */
 }
 
 /* .reel: 個々のリール（シンボルが回転する列） */
 .reel {
-    width: 80px;                               /* リールの幅 */
-    height: 240px;                             /* リールの高さ。シンボル3つ分 */
-    overflow: hidden;                          /* リールからはみ出たシンボルを非表示にする */
-    border: 2px solid var(--reel-border-color);/* 枠線を設定 */
-    margin: 0 5px;                             /* 隣のリールとの間隔 */
-    background: var(--reel-background-color);  /* 背景色を設定 */
-    position: relative;                        /* 子要素(.symbols)の絶対位置指定の基準点とする */
+	width: 80px;
+	/* リールの幅 */
+	height: 240px;
+	/* リールの高さ。シンボル3つ分 */
+	overflow: hidden;
+	/* リールからはみ出たシンボルを非表示にする */
+	border: 2px solid var(--reel-border-color);
+	/* 枠線を設定 */
+	margin: 0 5px;
+	/* 隣のリールとの間隔 */
+	background: var(--reel-background-color);
+	/* 背景色を設定 */
+	position: relative;
+	/* 子要素(.symbols)の絶対位置指定の基準点とする */
 }
 
 /* .symbols: シンボル全体を縦に並べて保持するコンテナ */
 .symbols {
-    position: absolute;                        /* 親要素(.reel)を基準に絶対位置で配置 */
-    top: 0;                                    /* 親要素の上端に配置 */
-    left: 0;                                   /* 親要素の左端に配置 */
-    right: 0;                                  /* 親要素の右端まで幅を広げる */
-    /* transformプロパティの変更をブラウザに予告し、アニメーションの描画を最適化させます */
-    will-change: transform;
+	position: absolute;
+	/* 親要素(.reel)を基準に絶対位置で配置 */
+	top: 0;
+	/* 親要素の上端に配置 */
+	left: 0;
+	/* 親要素の左端に配置 */
+	right: 0;
+	/* 親要素の右端まで幅を広げる */
+	/* transformプロパティの変更をブラウザに予告し、アニメーションの描画を最適化させます */
+	will-change: transform;
 }
 
 /* .symbol: 個々のシンボル（絵文字） */
 .symbol {
-    height: 80px;                              /* 各シンボルの高さ。リールの高さの1/3 */
-    font-size: 50px;                           /* 絵文字のフォントサイズ */
-    line-height: 80px;                         /* 高さとline-heightを合わせ、絵文字を垂直中央に配置 */
-    user-select: none;                         /* ユーザーによるテキスト選択を無効化 */
+	height: 80px;
+	/* 各シンボルの高さ。リールの高さの1/3 */
+	font-size: 50px;
+	/* 絵文字のフォントサイズ */
+	line-height: 80px;
+	/* 高さとline-heightを合わせ、絵文字を垂直中央に配置 */
+	user-select: none;
+	/* ユーザーによるテキスト選択を無効化 */
 }
 
 /* .symbol.bar: BARシンボルにのみ適用する特別なスタイル */
 .symbol.bar {
-    font-size: 40px;                           /* 他の絵文字との見た目のバランスを取るため、フォントサイズを少し小さく調整 */
-    font-weight: bold;                         /* 視認性を高めるために太字に設定 */
+	font-size: 40px;
+	/* 他の絵文字との見た目のバランスを取るため、フォントサイズを少し小さく調整 */
+	font-weight: bold;
+	/* 視認性を高めるために太字に設定 */
 }
 
 /* .controls: 操作ボタン全体をまとめるコンテナ */
 .controls {
-    margin-top: 10px;                          /* スロット本体との間に余白を設ける */
+	margin-top: 10px;
+	/* スロット本体との間に余白を設ける */
 }
 
 /* button: 全てのボタンに共通のスタイル */
 button {
-    margin: 10px;                              /* ボタン同士の間隔 */
-    padding: 10px 20px;                        /* ボタン内部の余白（上下10px, 左右20px） */
-    font-size: 16px;                           /* 文字サイズ */
-    border: none;                              /* デフォルトの枠線を削除 */
-    border-radius: 5px;                        /* 角を5px分丸める */
-    cursor: pointer;                           /* マウスカーソルを指の形に変更し、クリック可能であることを示す */
-    background-color: var(--button-background-color); /* 背景色を設定 */
-    color: var(--button-text-color);           /* 文字色を設定 */
-    /* 背景色が0.2秒かけて滑らかに変化するアニメーション効果 */
-    transition: background-color 0.2s ease;
+	margin: 10px;
+	/* ボタン同士の間隔 */
+	padding: 10px 20px;
+	/* ボタン内部の余白（上下10px, 左右20px） */
+	font-size: 16px;
+	/* 文字サイズ */
+	border: none;
+	/* デフォルトの枠線を削除 */
+	border-radius: 5px;
+	/* 角を5px分丸める */
+	cursor: pointer;
+	/* マウスカーソルを指の形に変更し、クリック可能であることを示す */
+	background-color: var(--button-background-color);
+	/* 背景色を設定 */
+	color: var(--button-text-color);
+	/* 文字色を設定 */
+	/* 背景色が0.2秒かけて滑らかに変化するアニメーション効果 */
+	transition: background-color 0.2s ease;
 }
 
 /* button:hover: ボタンにマウスカーソルが乗った時のスタイル */
 button:hover {
-    background-color: var(--button-hover-background-color); /* 背景色を少し暗くする */
+	background-color: var(--button-hover-background-color);
+	/* 背景色を少し暗くする */
 }
 
 /* button:disabled: ボタンが無効化された時のスタイル */
 button:disabled {
-    opacity: 0.6;                              /* 透明度を下げ、操作不可であることを視覚的に示す */
-    cursor: not-allowed;                       /* カーソルを「禁止」アイコンに変更 */
+	opacity: 0.6;
+	/* 透明度を下げ、操作不可であることを視覚的に示す */
+	cursor: not-allowed;
+	/* カーソルを「禁止」アイコンに変更 */
 }
