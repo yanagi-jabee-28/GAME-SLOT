@@ -40,8 +40,13 @@ const gameConfig = {
 	reverseRotation: true, // リールの回転方向 (true: 下から上へ, false: 上から下へ)
 
 	// --- 自動モード設定 ---
-	autoStopTimings: [1800, 2400, 3000], // 各リールの自動停止タイミング (ms)
-	autoStopTimeRandomness: 300,         // 自動停止タイミングのランダムな揺らぎ幅 (ms)
+	// 新方式: 最小/最大待ち時間と最小ギャップのみ指定（左→中→右の順で自動分配＋ゆらぎ）
+	autoStopMinTime: 1500,               // 左リールの最短停止時刻 (ms)
+	autoStopMaxTime: 2800,               // 右リールの最長停止時刻 (ms)
+	minSequentialStopGapMs: 120,         // 各リール間の最小停止ギャップ (ms)
+	// 旧方式（配列指定）は不要。必要なら下記を復活
+	// autoStopTimings: [1800, 2400, 3000], // 各リールの自動停止タイミング (ms)
+	// autoStopTimeRandomness: 300,         // 自動停止タイミングのランダムな揺らぎ幅 (ms)
 
 	// --- 狙い撃ち停止設定 (自動モード時のみ有効) ---
 	// reelIndex: 対象リールのインデックス (0から)

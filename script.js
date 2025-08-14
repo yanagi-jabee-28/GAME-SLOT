@@ -293,30 +293,54 @@ class SlotGame {
 			// 自動モードの場合: スタートボタンを一時的に無効化し、自動停止タイマーを設定
 			this.ui.setActionBtnDisabled(true);
 
-			if (this.config.stopTargets && this.config.stopTargets.length > 0) {
-				// 狙い撃ち停止モード
-				this.reels.forEach((reel, i) => {
-					const target = this.config.stopTargets.find(t => t.reelIndex === i);
-					// リールが少し回転してから停止処理に入るように、適度な遅延を設定
-					// 各リールに少しずつ遅延を持たせることで、自然な停止に見せる
-					// targetが存在しないリールは通常の自動停止ロジックで停止させる
-					if (target) {
-						setTimeout(() => this.stopReel(i, target), 1000 + i * 200); // 1秒後に開始、各リール200msずつずらす
-					} else {
-						// ストップターゲットが設定されていないリールは、既存の自動停止ロジックに従う
-						const time = this.config.autoStopTimings[i];
-						const randomTime = time + (Math.random() * this.config.autoStopTimeRandomness * 2 - this.config.autoStopTimeRandomness);
-						setTimeout(() => this.stopReel(i), randomTime);
+			// 停止順序は常に左→中→右（index昇順）。乱数ゆらぎは維持しつつ、最小ギャップで順序を強制。
+			const targets = this.config.stopTargets || [];
+
+			let scheduled;
+			const hasMinMax = typeof this.config.autoStopMinTime === 'number' && typeof this.config.autoStopMaxTime === 'number';
+			if (hasMinMax) {
+				const minT = this.config.autoStopMinTime;
+				const maxT = this.config.autoStopMaxTime;
+				const count = this.config.reelCount;
+				const step = count > 1 ? (maxT - minT) / (count - 1) : (maxT - minT);
+				const derivedRand = (typeof this.config.autoStopTimeRandomness === 'number')
+					? this.config.autoStopTimeRandomness
+					: Math.max(20, Math.min(300, step * 0.25));
+				const minGap = (this.config.minSequentialStopGapMs ?? Math.max(60, Math.min(200, step * 0.2)));
+
+				scheduled = Array.from({ length: count }, (_v, i) => {
+					const base = minT + step * i;
+					const jitter = (Math.random() * derivedRand * 2) - derivedRand; // [-derivedRand, +derivedRand]
+					return { i, time: base + jitter };
+				});
+
+				// 単調増加にクランプして順序を担保
+				for (let k = 1; k < scheduled.length; k++) {
+					if (scheduled[k].time <= scheduled[k - 1].time + minGap) {
+						scheduled[k].time = scheduled[k - 1].time + minGap;
 					}
-				});
+				}
 			} else {
-				// 通常の自動停止モード
-				this.config.autoStopTimings.forEach((time, i) => {
-					// 停止タイミングにランダムな揺らぎを追加し、単調さをなくす
-					const randomTime = time + (Math.random() * this.config.autoStopTimeRandomness * 2 - this.config.autoStopTimeRandomness);
-					setTimeout(() => this.stopReel(i), randomTime);
+				// 既存のautoStopTimings + ランダム揺らぎにフォールバック
+				const baseTimings = this.config.autoStopTimings;
+				const randRange = this.config.autoStopTimeRandomness;
+				const minGap = (this.config.minSequentialStopGapMs ?? 80);
+				scheduled = baseTimings.map((base, i) => {
+					const jitter = (Math.random() * randRange * 2) - randRange; // [-range, +range]
+					return { i, time: base + jitter };
 				});
+				for (let k = 1; k < scheduled.length; k++) {
+					if (scheduled[k].time <= scheduled[k - 1].time + minGap) {
+						scheduled[k].time = scheduled[k - 1].time + minGap;
+					}
+				}
 			}
+
+			// スケジュール実行（ターゲットは有無に関係なく同時刻で適用）
+			scheduled.forEach(({ i, time }) => {
+				const target = targets.find(t => t.reelIndex === i) || null;
+				setTimeout(() => this.stopReel(i, target), time);
+			});
 		}
 		else {
 			// 目押しモードの場合: スタートボタンのテキストを「停止」に変更
