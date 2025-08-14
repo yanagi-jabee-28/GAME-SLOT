@@ -5,6 +5,25 @@
  */
 
 /**
+ * 設計概要 / アーキテクチャ
+ * - 役割分担:
+ *   - UIManager: DOM参照とUI更新（テキスト変更、transform適用）に限定。副作用の集中管理を行います。
+ *   - SlotGame: ゲーム状態・アニメーション・制御ロジックを保持。DOM操作は UIManager 経由に限定します。
+ * - 主要設定（抜粋）:
+ *   - selectors: { slotMachine, actionBtn, modeBtn }
+ *   - reelsData: string[][]（各リールのシンボル配列）。インデックス順は停止計算・演出の基準です。
+ *   - symbolHeight: number（px）。CSSのシンボル高さと一致必須。
+ *   - 自動停止: autoStopMinTime/autoStopMaxTime と minSequentialStopGapMs による等間隔+ジッター生成。
+ *   - 当たり演出: 水平/斜めの別確率。揃えるシンボルは winSymbolWeights の加重抽選。
+ * - 壊れやすいポイントと対処:
+ *   1) CSS高さ不整合: symbolHeight と CSS の高さがズレると停止位置が半端になり、当たり/目押しが崩れます。
+ *   2) セレクタ変更: HTML の id/class を変えたら config.selectors を必ず更新。null 参照に注意。
+ *   3) reverseRotation: 停止計算の符号・正規化式が変わるため、変更時は実機確認を推奨します。
+ *   4) reelsData順序: インデックス指定（symbolIndex）や演出位置に影響。テスト設定も合わせて見直し。
+ *   5) 互換性: transform 取得は UIManager#getCurrentTranslateY を正典とし、重複実装を避けてください。
+ */
+
+/**
  * UI要素の管理とDOM操作を担当するクラス。
  * SlotGameクラスからUIに関する責務を分離し、コードの見通しと保守性を向上させます。
  */
@@ -12,6 +31,10 @@ class UIManager {
 	/**
 	 * UIManagerクラスのコンストラクタ。
 	 * @param {object} config - ゲームの設定オブジェクト
+	 * 契約:
+	 * - 入力: config.selectors の CSS セレクタに該当する要素が DOM 上に存在すること。
+	 * - 副作用: DOM を探索し、主要要素を this.elements にキャッシュします。
+	 * 注意: セレクタ変更時は HTML 側と必ず同期し、null 参照による TypeError を防止してください。
 	 */
 	constructor(config) {
 		this.config = config;
@@ -87,6 +110,11 @@ class UIManager {
 		element.style.transform = `translateY(${yPosition}px)`;
 	}
 
+	/* 代替案について
+	 * CSS クラス切替 + transition でも停止演出は可能ですが、1px 単位の滑らかな無限スクロールには
+	 * 毎フレームの transform 更新が適しています（GPU アクセラレーションの恩恵あり）。
+	 */
+
 	/**
 	 * アクションボタンのテキストを設定します。
 	 * @param {string} text - 設定するテキスト
@@ -135,6 +163,10 @@ class SlotGame {
 	 * ゲームの初期設定とDOM要素の紐付けを行います。
 	 * @param {HTMLElement} element - スロットマシンのコンテナとなるHTML要素（例: <div id="slot-machine">）
 	 * @param {object} config - ゲームの動作を定義する設定オブジェクト
+	 * 契約:
+	 * - 入力: element は現状未使用（将来の複数インスタンス・スコープ分離で利用予定）。
+	 * - 出力: reels 配列やフラグ類を初期化し、DOM構築とイベント登録を完了します。
+	 * 注意: selectors への依存が強いため、element ベースのクエリへ段階的に移行するとテスタビリティが向上します。
 	 */
 	constructor(element, config) {
 		this.config = config;
@@ -180,6 +212,7 @@ class SlotGame {
 			// 設定データから現在のリールに表示するシンボル配列を取得
 			const reelSymbols = this.config.reelsData[i];
 			const fragment = document.createDocumentFragment(); // DOM操作のパフォーマンス向上のためDocumentFragmentを使用
+			// 注意: symbolDuplicationFactor を増やすと初期 DOM ノード数とメモリ使用量が増加します。体感と性能のバランスで調整。
 
 			// シンボルを2周分生成し、リールに追加
 			for (let j = 0; j < reelSymbols.length * this.config.symbolDuplicationFactor; j++) {
@@ -224,20 +257,19 @@ class SlotGame {
 		});
 	}
 
-	/**
-	 * 指定されたHTML要素の現在のY軸方向の`transform`変位量を取得します。
-	 * `getComputedStyle`と`DOMMatrix`を使用して、正確なピクセル値を取得します。
-	 * @param {HTMLElement} element - Y軸変位量を取得する対象のHTML要素
-	 * @returns {number} Y軸の変位量 (ピクセル単位)。transformが設定されていない場合は0を返します。
+	/*
+	 * 未使用のためコメントアウト：
+	 * SlotGame#getCurrentTranslateY は UIManager#getCurrentTranslateY と処理が重複しており、
+	 * 本クラス内では参照しておりません（startReel/stopReel は UIManager 経由で取得）。
+	 * 2箇所に同等処理があると将来的な仕様変更（例：transformの扱い変更、DOMMatrix非対応環境へのフォールバック等）時に
+	 * 片方だけ修正されて不整合が生じやすいため、UIManager 側を正とし本実装は退避いたします。
+	 * 必要になった際は UIManager に統一したうえで呼び出し箇所を見直してください。
 	 */
-	getCurrentTranslateY(element) {
-		const style = window.getComputedStyle(element);
-		// `transform`プロパティの計算値からDOMMatrixオブジェクトを生成
-		// DOMMatrixは、要素に適用されている変換行列を表します。
-		const matrix = new DOMMatrix(style.transform);
-		// `m42`は、変換行列のY軸方向の平行移動成分（translateY）を表します。
-		return matrix.m42;
-	}
+	// getCurrentTranslateY(element) {
+	// 	const style = window.getComputedStyle(element);
+	// 	const matrix = new DOMMatrix(style.transform);
+	// 	return matrix.m42;
+	// }
 
 	/**
 	 * ゲームの操作ボタンにイベントリスナーを設定します。
@@ -257,6 +289,11 @@ class SlotGame {
 				this.handleAction();
 			}
 		});
+
+		/* アクセシビリティの補足
+		 * キーボード操作（Enter キー等）やスクリーンリーダー対応を強化する場合は、
+		 * ボタン要素にフォーカス可視化や aria-pressed などの属性付与も検討してください。
+		 */
 	}
 
 	/**
@@ -334,19 +371,18 @@ class SlotGame {
 					}
 				}
 			} else {
-				// 既存のautoStopTimings + ランダム揺らぎにフォールバック
-				const baseTimings = this.config.autoStopTimings;
-				const randRange = this.config.autoStopTimeRandomness;
-				const minGap = (this.config.minSequentialStopGapMs ?? 80);
-				scheduled = baseTimings.map((base, i) => {
-					const jitter = (Math.random() * randRange * 2) - randRange; // [-range, +range]
-					return { i, time: base + jitter };
-				});
-				for (let k = 1; k < scheduled.length; k++) {
-					if (scheduled[k].time <= scheduled[k - 1].time + minGap) {
-						scheduled[k].time = scheduled[k - 1].time + minGap;
-					}
-				}
+				/*
+				 * 未使用（旧方式）のため実処理は停止：
+				 * 以前は config.autoStopTimings / autoStopTimeRandomness を使用して停止時刻を決めていましたが、
+				 * 現在は autoStopMinTime / autoStopMaxTime に統一しています。
+				 * 本ブロックを復活させる場合は、config 側に旧プロパティを再導入し、
+				 * さらに minSequentialStopGapMs との整合性（最小ギャップが確保されること）を満たすようご注意ください。
+				 * 将来の事故防止のため、ここでは安全な簡易スケジュールを生成して継続可能としています。
+				 */
+				const count = this.config.reelCount;
+				const base = 1000; // 注意: 任意の既定値。UI/体感に合わせて見直してください。
+				const step = Math.max(100, this.config.minSequentialStopGapMs ?? 100);
+				scheduled = Array.from({ length: count }, (_v, i) => ({ i, time: base + step * i }));
 			}
 
 			// 当たり（勝ち）発動: 水平/斜めを別確率で制御
@@ -440,6 +476,7 @@ class SlotGame {
 			}
 
 			// `pos`を更新し、リールの全高を超えたらループさせる (無限スクロールの錯覚)
+			// 補足: totalHeight は重複分を含む 2 周（または指定周）相当です。mod により継ぎ目を不可視化します。
 			pos = (pos + currentSpeed) % reel.totalHeight;
 
 			// `pos`から実際のY座標`newY`を計算し、`transform: translateY()`に適用
@@ -472,6 +509,13 @@ class SlotGame {
 
 		if (target) {
 			// --- ターゲット停止ロジック ---
+			/* 契約と注意点
+			 * 入力: target = { symbolIndex?: number, symbol?: string, position?: 'top'|'middle'|'bottom' }
+			 * 出力: なし（DOM transform の更新と内部状態の更新を伴う副作用）
+			 * 注意:
+			 * - position 未指定時はラップ（境界またぎ）を避けつつ最短距離になる候補を自動選定します。
+			 * - reverseRotation により「前方」の定義が変化します（pickForwardClosestY を参照）。
+			 */
 			const reelSymbols = reel.symbols;
 			const symbolHeight = this.config.symbolHeight;
 			const totalHeight = reelSymbols.length * symbolHeight; // 無限スクロールのためのシンボル総高
@@ -837,6 +881,7 @@ class SlotGame {
 document.addEventListener('DOMContentLoaded', () => {
 	// gameConfigがグローバルに存在することを想定
 	// もし存在しない場合は、ここでconfig.jsから読み込むか、定義する必要がある
+	// 注意: index.html は defer で config.js → script.js の順に読み込みます。順序を変えると gameConfig 未定義になります。
 	const slotMachineElement = document.querySelector(gameConfig.selectors.slotMachine);
 	if (slotMachineElement) {
 		new SlotGame(slotMachineElement, gameConfig);
