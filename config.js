@@ -54,6 +54,13 @@ const gameConfig = {
 	// position: 停止位置 ('top', 'middle', 'bottom')
 	// 例: 左リール(0)の下段('bottom')に、インデックス19の絵柄(7️⃣)を止める
 	stopTargets: [
-		{ reelIndex: 1, symbolIndex: 19, position: 'bottom' }
+		{ reelIndex: 1, symbolIndex: 19, position: 'bottom' },
+		// 例: 左・中・右すべてを同時ターゲット
+		{ reelIndex: 0, symbolIndex: 19, position: 'bottom' },
+		{ reelIndex: 2, symbolIndex: 19, position: 'bottom' },
 	],
+
+	// 同時ターゲット制御の発動確率（0〜1）。開発中は1に設定。
+	// 1: 常に stopTargets を適用、0: 一切適用しない。将来的には変数などで変更可能。
+	targetActivationProbability: 1,
 };

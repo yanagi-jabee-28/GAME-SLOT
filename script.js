@@ -295,6 +295,9 @@ class SlotGame {
 
 			// 停止順序は常に左→中→右（index昇順）。乱数ゆらぎは維持しつつ、最小ギャップで順序を強制。
 			const targets = this.config.stopTargets || [];
+			// 同時ターゲット制御の発動確率（スピン単位で一括適用）
+			const activationP = (typeof this.config.targetActivationProbability === 'number') ? this.config.targetActivationProbability : 1;
+			const useTargetsThisSpin = targets.length > 0 && Math.random() < activationP;
 
 			let scheduled;
 			const hasMinMax = typeof this.config.autoStopMinTime === 'number' && typeof this.config.autoStopMaxTime === 'number';
@@ -338,7 +341,7 @@ class SlotGame {
 
 			// スケジュール実行（ターゲットは有無に関係なく同時刻で適用）
 			scheduled.forEach(({ i, time }) => {
-				const target = targets.find(t => t.reelIndex === i) || null;
+				const target = useTargetsThisSpin ? (targets.find(t => t.reelIndex === i) || null) : null;
 				setTimeout(() => this.stopReel(i, target), time);
 			});
 		}
