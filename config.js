@@ -50,14 +50,14 @@ const gameConfig = {
 
 	// --- 狙い撃ち停止設定 (自動モード時のみ有効) ---
 	// reelIndex: 対象リールのインデックス (0から)
-	// symbolIndex: reelsData 内の対象絵柄のインデックス
-	// position: 停止位置 ('top', 'middle', 'bottom')
+	// symbolIndex: reelsData 内の対象絵柄のインデックス（または symbol: '🍒' のように絵柄文字でも指定可）
+	// position: 停止位置 ('top', 'middle', 'bottom') ※省略可。省略時はランダムで選択されます。
 	// 例: 左リール(0)の下段('bottom')に、インデックス19の絵柄(7️⃣)を止める
 	stopTargets: [
-		{ reelIndex: 1, symbolIndex: 19, position: 'bottom' },
-		// 例: 左・中・右すべてを同時ターゲット
-		{ reelIndex: 0, symbolIndex: 19, position: 'bottom' },
-		{ reelIndex: 2, symbolIndex: 19, position: 'bottom' },
+		// { reelIndex: 1, symbol: '7️⃣' },
+		// // 例: 左・中・右すべてを同時ターゲット
+		// { reelIndex: 0, symbol: '7️⃣' },
+		// { reelIndex: 2, symbol: '7️⃣' },
 	],
 
 	// 同時ターゲット制御の発動確率（0〜1）。開発中は1に設定。

@@ -247,6 +247,16 @@ class SlotGame {
 		this.ui.elements.actionBtn.addEventListener('click', () => this.handleAction());
 		// モード切り替えボタンがクリックされたらtoggleModeメソッドを実行
 		this.ui.elements.modeBtn.addEventListener('click', () => this.toggleMode());
+
+		// キーボード: スペースキーでスタート/停止をトグル
+		document.addEventListener('keydown', (e) => {
+			if (e.code === 'Space') {
+				// 長押しの連続発火を防止し、ページスクロールなどの既定動作を抑止
+				if (e.repeat) return;
+				e.preventDefault();
+				this.handleAction();
+			}
+		});
 	}
 
 	/**
@@ -421,40 +431,67 @@ class SlotGame {
 			const symbolHeight = this.config.symbolHeight;
 			const totalHeight = reelSymbols.length * symbolHeight; // 無限スクロールのためのシンボル総高
 
+			// position 未指定/不正時は top/middle/bottom からランダム選択
+			const validPositions = ['top', 'middle', 'bottom'];
+			const chosenPosition = validPositions.includes(target.position)
+				? target.position
+				: validPositions[Math.floor(Math.random() * validPositions.length)];
 			let positionOffset = 0;
-			if (target.position === 'middle') positionOffset = 1;
-			if (target.position === 'bottom') positionOffset = 2;
+			if (chosenPosition === 'middle') positionOffset = 1;
+			if (chosenPosition === 'bottom') positionOffset = 2;
 
-			// 目標シンボルがリールの一番上に表示されるべきインデックスを計算
-			// 無限スクロールを考慮し、負の値にならないように調整
-			const targetSymbolTopIndex = (target.symbolIndex - positionOffset + reelSymbols.length) % reelSymbols.length;
+			// 回転方向（true: 下方向）
+			const movingDown = this.config.reverseRotation;
 
-			// 目標Y座標の基準値
-			const baseTargetY = -targetSymbolTopIndex * symbolHeight;
-
-			// 現在の回転方向に沿って“前方”にある目標Yを決定（逆行防止）
-			let closestTargetY = baseTargetY;
-			const movingDown = this.config.reverseRotation; // 本実装ではtrue時に下方向へ進む
-			if (movingDown) {
-				// 下方向（Yが増加）: 現在位置以上で最も近い位置を選ぶ [currentY, currentY+totalHeight)
-				while (closestTargetY < currentY) {
-					closestTargetY += reel.totalHeight;
+			// 現在位置から見て“前方”にある最も近いYを返すヘルパー
+			const pickForwardClosestY = (baseY) => {
+				let y = baseY;
+				if (movingDown) {
+					while (y < currentY) y += reel.totalHeight;
+					while (y >= currentY + reel.totalHeight) y -= reel.totalHeight;
+				} else {
+					while (y > currentY) y -= reel.totalHeight;
+					while (y <= currentY - reel.totalHeight) y += reel.totalHeight;
 				}
-				while (closestTargetY >= currentY + reel.totalHeight) {
-					closestTargetY -= reel.totalHeight;
+				return y;
+			};
+
+			let targetSymbolTopIndex;
+			let baseTargetY;
+			let animTargetY;
+
+			if (typeof target.symbolIndex === 'number' && Number.isFinite(target.symbolIndex)) {
+				// 明示的なシンボルインデックス指定
+				const rawIndex = ((target.symbolIndex % reelSymbols.length) + reelSymbols.length) % reelSymbols.length;
+				targetSymbolTopIndex = (rawIndex - positionOffset + reelSymbols.length) % reelSymbols.length;
+				baseTargetY = -targetSymbolTopIndex * symbolHeight;
+				animTargetY = pickForwardClosestY(baseTargetY);
+			} else if (typeof target.symbol === 'string') {
+				// 絵柄（文字）指定: 該当絵柄の出現位置から前方最短を選択
+				const candidates = [];
+				for (let ci = 0; ci < reelSymbols.length; ci++) {
+					if (reelSymbols[ci] === target.symbol) candidates.push(ci);
 				}
+				if (candidates.length === 0) {
+					console.warn(`Target symbol not found on reel ${index}:`, target.symbol);
+					return this.stopReel(index, null); // 見つからなければ通常停止へフォールバック
+				}
+				let best = { dist: Infinity, topIndex: 0, baseY: 0, y: 0 };
+				for (const ci of candidates) {
+					const topIndex = (ci - positionOffset + reelSymbols.length) % reelSymbols.length;
+					const baseY = -topIndex * symbolHeight;
+					const y = pickForwardClosestY(baseY);
+					const dist = movingDown ? (y - currentY) : (currentY - y);
+					if (dist < best.dist) best = { dist, topIndex, baseY, y };
+				}
+				targetSymbolTopIndex = best.topIndex;
+				baseTargetY = best.baseY;
+				animTargetY = best.y;
 			} else {
-				// 上方向（Yが減少）: 現在位置以下で最も近い位置を選ぶ (currentY-totalHeight, currentY]
-				while (closestTargetY > currentY) {
-					closestTargetY -= reel.totalHeight;
-				}
-				while (closestTargetY <= currentY - reel.totalHeight) {
-					closestTargetY += reel.totalHeight;
-				}
+				// 指定がなければ通常停止へフォールバック
+				return this.stopReel(index, null);
 			}
 
-			// アニメーションで向かうターゲット（現在位置の“前方”）
-			const animTargetY = closestTargetY;
 			// 表示レンジに正規化した最終ターゲット（-totalHeight..0）
 			const finalTargetYNormalized = (((animTargetY % reel.totalHeight) + reel.totalHeight) % reel.totalHeight) - reel.totalHeight;
 
@@ -482,6 +519,7 @@ class SlotGame {
 			// デバッグログの追加
 			console.log(`--- stopReel Debug Log for Reel ${index} ---`);
 			console.log(`Target:`, target);
+			console.log(`Chosen Position: ${chosenPosition}`);
 			console.log(`Current Y: ${currentY}px`);
 			console.log(`Reel Symbols Length: ${reelSymbols.length}`);
 			console.log(`Symbol Height: ${symbolHeight}px`);
