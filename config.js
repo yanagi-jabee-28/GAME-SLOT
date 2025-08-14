@@ -32,12 +32,12 @@ const gameConfig = {
 	// この設定は、狙い撃ち機能がOFFの場合や、通常のスピンでどのシンボルを狙うかを決定する際に使用されます。
 	// 重みが大きいほど、そのシンボルが選ばれやすくなります。
 	symbolProbabilities: [
-		{ symbol: '7️⃣', weight: 5 },   // 7
+		{ symbol: '7️⃣', weight: 1 },   // 7
 		{ symbol: 'BAR', weight: 10 },  // BAR
 		{ symbol: '💎', weight: 15 },   // ダイヤモンド
 		{ symbol: '🍉', weight: 20 },   // スイカ
 		{ symbol: '🍎', weight: 25 },   // リンゴ
-		{ symbol: '🍋', weight: 100 },   // レモン
+		{ symbol: '🍋', weight: 500 },   // レモン
 		{ symbol: '🍒', weight: 35 },   // チェリー
 		{ symbol: '🍌', weight: 40 },   // バナナ
 		{ symbol: '🍇', weight: 5 }    // ぶどう
@@ -50,17 +50,26 @@ const gameConfig = {
 
 	// --- アニメーションと速度設定 ---
 	autoSpeed: 40,         // 自動モード時のリール回転速度 (ピクセル/フレーム)
-	manualSpeed: 10,       // 目押しモード時のリール回転速度 (ピクセル/フレーム)
-	accelerationTime: 1000, // スピン開始から最高速に達するまでの加速時間 (ms)
+	manualSpeed: 20,       // 目押しモード時のリール回転速度 (ピクセル/フレーム)
+	accelerationTime: 250, // スピン開始から最高速に達するまでの加速時間 (ms)
 	minStopAnimTime: 10,  // 停止アニメーションの最短時間 (ms)
 	maxStopAnimTime: 2000, // 停止アニメーションの最長時間 (ms)
 	reverseRotation: true, // リールの回転方向 (true: 下から上へ, false: 上から下へ)
 
 	// --- 自動モード設定 ---
+	// 【注意】設定値が競合すると、意図しない挙動を引き起こす可能性があります。
+	// 最短時間と最長時間の間隔は、リール間の最小ギャップの合計以上である必要があります。
+	// 計算式: (reelCount - 1) * minSequentialStopGapMs <= autoStopMaxTime - autoStopMinTime
+	//
+	// 現在の無効な設定例 (3リールの場合):
+	// (3 - 1) * 300ms = 600ms
+	// 1500ms - 1000ms = 500ms
+	// 600ms > 500ms のため、この設定では右リールの停止時間が autoStopMaxTime を超える可能性があります。
+	//
 	// 新方式: 最小/最大待ち時間と最小ギャップのみ指定（左→中→右の順で自動分配＋ゆらぎ）
-	autoStopMinTime: 1500,               // 左リールの最短停止時刻 (ms)
-	autoStopMaxTime: 2800,               // 右リールの最長停止時刻 (ms)
-	minSequentialStopGapMs: 120,         // 各リール間の最小停止ギャップ (ms)
+	autoStopMinTime: 1000,               // 左リールの最短停止時刻 (ms)
+	autoStopMaxTime: 1500,               // 全リールの最長停止時刻 (ms)
+	minSequentialStopGapMs: 100,         // 各リール間の最小停止ギャップ (ms)（左→中→右の順で適用）
 	// 旧方式（配列指定）は不要。必要なら下記を復活
 	// autoStopTimings: [1800, 2400, 3000], // 各リールの自動停止タイミング (ms)
 	// autoStopTimeRandomness: 300,         // 自動停止タイミングのランダムな揺らぎ幅 (ms)
