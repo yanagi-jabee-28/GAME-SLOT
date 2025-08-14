@@ -118,7 +118,7 @@ const gameConfig = {
 
 	// --- デバッグ設定 ---
 	debug: {
-		stopLogs: true,  // 停止時の概要ログ
+		stopLogs: false,  // 停止時の概要ログ
 		frameLogs: false, // フレーム毎ログ（重いので通常はfalse）
 	},
 };
