@@ -52,9 +52,11 @@ const gameConfig = {
 	autoSpeed: 40,         // 自動モード時のリール回転速度 (ピクセル/フレーム)
 	manualSpeed: 20,       // 目押しモード時のリール回転速度 (ピクセル/フレーム)
 	accelerationTime: 250, // スピン開始から最高速に達するまでの加速時間 (ms)
-	minStopAnimTime: 10,  // 停止アニメーションの最短時間 (ms)
-	maxStopAnimTime: 2000, // 停止アニメーションの最長時間 (ms)
+	minStopAnimTime: 750,  // 停止アニメーションの最短時間 (ms) 短すぎ停止を防止
+	maxStopAnimTime: 1000, // 停止アニメーションの最長時間 (ms)
 	reverseRotation: true, // リールの回転方向 (true: 下から上へ, false: 上から下へ)
+	stopEasing: 'cubic',   // 停止時のイージング: 'cubic'|'quad'|'sine'|'linear'（sineは停止開始時の加速度0）
+	stopBaseDurationMs: 240, // 自動停止時の減速ベース時間（短距離でも最低限の演出を確保）
 
 	// --- 自動モード設定 ---
 	// 【注意】設定値が競合すると、意図しない挙動を引き起こす可能性があります。
@@ -89,4 +91,34 @@ const gameConfig = {
 	// 同時ターゲット制御の発動確率（0〜1）。開発中は1に設定。
 	// 1: 常に stopTargets を適用、0: 一切適用しない。将来的には変数などで変更可能。
 	targetActivationProbability: 1,
+
+	// --- 勝ち（当たり）制御 ---
+	// 水平/斜めの発動確率（0〜1）。合計が1を超える場合は内部で正規化されます。
+	winHorizontalProbability: 0.15,
+	winDiagonalProbability: 0.1,
+	// 旧: winActivationProbability は後方互換として水平に流用
+	// winActivationProbability: 0.5,
+	// 絵柄ごとの重み（高いほど選ばれやすい）
+	// 例: 7️⃣を最優先で揃える: { '7️⃣': 1, 'BAR': 0.5, '🍒': 0.2 }
+	winSymbolWeights: {
+		'7️⃣': 1,
+		'BAR': 10,
+		'💎': 15,
+		'🍉': 20,
+		'🍎': 25,
+		'🍒': 35,
+		'🍌': 40,
+		'🍋': 500,
+		'🍇': 5
+	},
+	// 揃える段。'top'|'middle'|'bottom'|'random'（未設定/不正時はrandom）
+	winRowMode: 'random',
+	// 斜めの方向。'down'(↘) | 'up'(↗) | 'random'
+	winDiagonalMode: 'random',
+
+	// --- デバッグ設定 ---
+	debug: {
+		stopLogs: true,  // 停止時の概要ログ
+		frameLogs: false, // フレーム毎ログ（重いので通常はfalse）
+	},
 };

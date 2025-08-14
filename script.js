@@ -349,16 +349,54 @@ class SlotGame {
 				}
 			}
 
-			// スケジュール実行（ターゲットは有無に関係なく同時刻で適用）
-			scheduled.forEach(({ i, time }) => {
-				let target = useTargetsThisSpin ? (targets.find(t => t.reelIndex === i) || null) : null;
-
-				// ターゲットが指定されていない場合、確率に基づいてシンボルを抽選
-				if (!target) {
-					const chosenSymbol = this.chooseSymbolByProbability();
-					target = { reelIndex: i, symbol: chosenSymbol };
+			// 当たり（勝ち）発動: 水平/斜めを別確率で制御
+			const horizP = (typeof this.config.winHorizontalProbability === 'number')
+				? this.config.winHorizontalProbability
+				: ((typeof this.config.winActivationProbability === 'number') ? this.config.winActivationProbability : 0);
+			const diagP = (typeof this.config.winDiagonalProbability === 'number') ? this.config.winDiagonalProbability : 0;
+			const sumP = Math.min(1, Math.max(0, horizP + diagP));
+			let winType = null; // 'horizontal' | 'diagonal' | null
+			const roll = Math.random();
+			if (roll < sumP) {
+				winType = (roll < Math.min(1, horizP)) ? 'horizontal' : 'diagonal';
+			}
+			let spinTargets = null;
+			if (winType) {
+				const chosenSymbol = this.chooseSymbolByProbability();
+				const existsOnAll = this.reels.every(r => r.symbols.includes(chosenSymbol));
+				if (existsOnAll) {
+					if (winType === 'horizontal') {
+						const rows = ['top', 'middle', 'bottom'];
+						const rowMode = this.config.winRowMode;
+						const row = rows.includes(rowMode) ? rowMode : rows[Math.floor(Math.random() * rows.length)];
+						spinTargets = this.reels.map((_r, idx) => ({ reelIndex: idx, symbol: chosenSymbol, position: row }));
+					} else if (winType === 'diagonal') {
+						// 3リール想定の斜め: ↘ (top,middle,bottom) or ↗ (bottom,middle,top)
+						let dir;
+						const mode = this.config.winDiagonalMode;
+						if (mode === 'up' || mode === 'down') {
+							dir = mode;
+						} else {
+							dir = Math.random() < 0.5 ? 'down' : 'up';
+						}
+						let positions;
+						if (this.config.reelCount === 3) {
+							positions = (dir === 'down') ? ['top', 'middle', 'bottom'] : ['bottom', 'middle', 'top'];
+							spinTargets = this.reels.map((_r, idx) => ({ reelIndex: idx, symbol: chosenSymbol, position: positions[idx] }));
+						} else {
+							// reelCount != 3 の場合は水平にフォールバック
+							const rows = ['top', 'middle', 'bottom'];
+							const row = rows[Math.floor(Math.random() * rows.length)];
+							spinTargets = this.reels.map((_r, idx) => ({ reelIndex: idx, symbol: chosenSymbol, position: row }));
+						}
+					}
 				}
+			}
 
+			// スケジュール実行（優先度: 当たりターゲット > 設定stopTargets > 通常）
+			scheduled.forEach(({ i, time }) => {
+				const configuredTarget = useTargetsThisSpin ? (targets.find(t => t.reelIndex === i) || null) : null;
+				const target = (spinTargets && spinTargets[i]) || configuredTarget || null;
 				setTimeout(() => this.stopReel(i, target), time);
 			});
 		}
@@ -438,9 +476,9 @@ class SlotGame {
 			const symbolHeight = this.config.symbolHeight;
 			const totalHeight = reelSymbols.length * symbolHeight; // 無限スクロールのためのシンボル総高
 
-			// position 未指定/不正時は top/middle/bottom からランダム選択
+			// position 未指定/不正時は後でシーム回避を考慮して選択（暫定はランダム）
 			const validPositions = ['top', 'middle', 'bottom'];
-			const chosenPosition = validPositions.includes(target.position)
+			let chosenPosition = validPositions.includes(target.position)
 				? target.position
 				: validPositions[Math.floor(Math.random() * validPositions.length)];
 			let positionOffset = 0;
@@ -473,6 +511,27 @@ class SlotGame {
 				targetSymbolTopIndex = (rawIndex - positionOffset + reelSymbols.length) % reelSymbols.length;
 				baseTargetY = -targetSymbolTopIndex * symbolHeight;
 				animTargetY = pickForwardClosestY(baseTargetY);
+
+				// position未指定だった場合、シーム跨ぎ（animTargetY>=0）を回避できる位置を探索
+				if (!validPositions.includes(target.position)) {
+					const candidates = [];
+					for (const pos of validPositions) {
+						const offset = pos === 'middle' ? 1 : (pos === 'bottom' ? 2 : 0);
+						const topIdx = (rawIndex - offset + reelSymbols.length) % reelSymbols.length;
+						const baseY = -topIdx * symbolHeight;
+						const y = pickForwardClosestY(baseY);
+						const dist = movingDown ? (y - currentY) : (currentY - y);
+						const wraps = movingDown ? (y >= 0) : (y <= -reel.totalHeight);
+						candidates.push({ pos, y, dist, wraps, topIdx, baseY });
+					}
+					// ラップしない候補を優先、距離最小を選択
+					candidates.sort((a, b) => (Number(a.wraps) - Number(b.wraps)) || (a.dist - b.dist));
+					const best = candidates[0];
+					chosenPosition = best.pos;
+					animTargetY = best.y;
+					targetSymbolTopIndex = best.topIdx;
+					baseTargetY = best.baseY;
+				}
 			} else if (typeof target.symbol === 'string') {
 				// 絵柄（文字）指定: 該当絵柄の出現位置から前方最短を選択
 				const candidates = [];
@@ -483,17 +542,42 @@ class SlotGame {
 					console.warn(`Target symbol not found on reel ${index}:`, target.symbol);
 					return this.stopReel(index, null); // 見つからなければ通常停止へフォールバック
 				}
-				let best = { dist: Infinity, topIndex: 0, baseY: 0, y: 0 };
-				for (const ci of candidates) {
-					const topIndex = (ci - positionOffset + reelSymbols.length) % reelSymbols.length;
-					const baseY = -topIndex * symbolHeight;
-					const y = pickForwardClosestY(baseY);
-					const dist = movingDown ? (y - currentY) : (currentY - y);
-					if (dist < best.dist) best = { dist, topIndex, baseY, y };
+				const buildBestForOffset = (offset) => {
+					let best = { dist: Infinity, topIndex: 0, baseY: 0, y: 0, wraps: false };
+					for (const ci of candidates) {
+						const topIndex = (ci - offset + reelSymbols.length) % reelSymbols.length;
+						const baseY = -topIndex * symbolHeight;
+						const y = pickForwardClosestY(baseY);
+						const dist = movingDown ? (y - currentY) : (currentY - y);
+						const wraps = movingDown ? (y >= 0) : (y <= -reel.totalHeight);
+						if (dist < best.dist) best = { dist, topIndex, baseY, y, wraps };
+					}
+					return best;
+				};
+
+				if (!validPositions.includes(target.position)) {
+					const options = [
+						{ pos: 'top', off: 0 },
+						{ pos: 'middle', off: 1 },
+						{ pos: 'bottom', off: 2 },
+					].map(o => ({
+						...o,
+						best: buildBestForOffset(o.off)
+					}));
+					// ラップしないもの優先、距離最小
+					options.sort((a, b) => (Number(a.best.wraps) - Number(b.best.wraps)) || (a.best.dist - b.best.dist));
+					const sel = options[0];
+					chosenPosition = sel.pos;
+					targetSymbolTopIndex = sel.best.topIndex;
+					baseTargetY = sel.best.baseY;
+					animTargetY = sel.best.y;
+				} else {
+					const offset = chosenPosition === 'middle' ? 1 : (chosenPosition === 'bottom' ? 2 : 0);
+					const best = buildBestForOffset(offset);
+					targetSymbolTopIndex = best.topIndex;
+					baseTargetY = best.baseY;
+					animTargetY = best.y;
 				}
-				targetSymbolTopIndex = best.topIndex;
-				baseTargetY = best.baseY;
-				animTargetY = best.y;
 			} else {
 				// 指定がなければ通常停止へフォールバック
 				return this.stopReel(index, null);
@@ -513,37 +597,36 @@ class SlotGame {
 				distanceToStop = currentY - animTargetY;
 				if (distanceToStop < 0) distanceToStop += reel.totalHeight;
 			}
-			const currentSpeed = this.config.autoSpeed; // 自動モードの速度を使用
+			// 距離に基づく停止アニメ時間（停止演出の一貫性のため共通関数を使用）
+			duration = this.calculateStopDuration(distanceToStop);
 
-			// 距離と速度からおおよその時間を計算。
-			// easeOutCubicの特性を考慮し、減速にかかる時間を調整
-			duration = (distanceToStop / currentSpeed) * 10; // 係数10は調整が必要かもしれません
-
-			// 最小・最大時間を考慮
+			// 最小・最大時間でクランプ（短すぎ停止/長すぎ減速を防ぐ）
 			duration = Math.min(Math.max(duration, this.config.minStopAnimTime), this.config.maxStopAnimTime);
 
 			// アニメーション開始
 			// デバッグログの追加
-			console.log(`--- stopReel Debug Log for Reel ${index} ---`);
-			console.log(`Target:`, target);
-			console.log(`Chosen Position: ${chosenPosition}`);
-			console.log(`Current Y: ${currentY}px`);
-			console.log(`Reel Symbols Length: ${reelSymbols.length}`);
-			console.log(`Symbol Height: ${symbolHeight}px`);
-			console.log(`Total Height (2x): ${totalHeight}px`);
-			console.log(`Target Symbol Top Index: ${targetSymbolTopIndex}`);
-			console.log(`Base Target Y: ${baseTargetY}px`);
-			console.log(`Closest Target Y (anim): ${animTargetY}px`);
-			console.log(`Final Target Y (normalized): ${finalTargetYNormalized}px`);
-			console.log(`Distance to Stop: ${distanceToStop}px`);
-			console.log(`Animation Duration: ${duration}ms`);
+			if (this.config.debug?.stopLogs) {
+				console.log(`--- stopReel Debug Log for Reel ${index} ---`);
+				console.log(`Target:`, target);
+				console.log(`Chosen Position: ${chosenPosition}`);
+				console.log(`Current Y: ${currentY}px`);
+				console.log(`Reel Symbols Length: ${reelSymbols.length}`);
+				console.log(`Symbol Height: ${symbolHeight}px`);
+				console.log(`Total Height (2x): ${totalHeight}px`);
+				console.log(`Target Symbol Top Index: ${targetSymbolTopIndex}`);
+				console.log(`Base Target Y: ${baseTargetY}px`);
+				console.log(`Closest Target Y (anim): ${animTargetY}px`);
+				console.log(`Final Target Y (normalized): ${finalTargetYNormalized}px`);
+				console.log(`Distance to Stop: ${distanceToStop}px`);
+				console.log(`Animation Duration: ${duration}ms`);
+			}
 			const startY = currentY;
 			const startTime = performance.now();
 
 			const animateStop = (currentTime) => {
 				const elapsed = currentTime - startTime;
 				const progress = Math.min(elapsed / duration, 1);
-				const easedProgress = this.easeOutCubic(progress);
+				const easedProgress = this.getStopEasingFn()(progress);
 
 				// 仮想座標上の進行（前方に単調増加/減少）
 				const virtualY = startY + (animTargetY - startY) * easedProgress;
@@ -551,8 +634,10 @@ class SlotGame {
 				const displayY = (((virtualY % totalHeight) + totalHeight) % totalHeight) - totalHeight;
 				reel.element.style.transform = `translateY(${displayY}px)`;
 
-				// 追加するログ
-				console.log(`Reel ${index} Stop Anim: startY=${startY.toFixed(2)}px, targetY=${animTargetY.toFixed(2)}px, elapsed=${elapsed.toFixed(2)}ms, progress=${progress.toFixed(2)}, easedProgress=${easedProgress.toFixed(2)}, virtualY=${virtualY.toFixed(2)}px, displayY=${displayY.toFixed(2)}px`);
+				// 追加ログ（デフォルトOFF）
+				if (this.config.debug?.frameLogs) {
+					console.log(`Reel ${index} Stop Anim: startY=${startY.toFixed(2)}px, targetY=${animTargetY.toFixed(2)}px, elapsed=${elapsed.toFixed(2)}ms, progress=${progress.toFixed(2)}, easedProgress=${easedProgress.toFixed(2)}, virtualY=${virtualY.toFixed(2)}px, displayY=${displayY.toFixed(2)}px`);
+				}
 
 				if (progress < 1) {
 					requestAnimationFrame(animateStop);
@@ -568,50 +653,45 @@ class SlotGame {
 			requestAnimationFrame(animateStop);
 
 		} else {
-			// --- 既存のランダム停止ロジック ---
-			// 現在のY座標から、次のシンボルでぴったり止まるための残りの距離を計算
-			let remainder; // シンボル境界からの残りピクセル数
+			// --- 通常停止ロジックをターゲット生成に切り替え ---
+			// 次のシンボル位置に停止するためのターゲットを内部的に生成します。
+			const symbolHeight = this.config.symbolHeight;
+			const totalHeight = reel.totalHeight;
+
+			// 現在のY座標から、次に最も近いシンボル境界のY座標を計算します。
+			let remainder;
 			if (this.config.reverseRotation) {
-				const pos = currentY + reel.totalHeight;
-				remainder = pos % this.config.symbolHeight;
+				const pos = currentY + totalHeight;
+				remainder = pos % symbolHeight;
 			} else {
-				// currentYは負の値なので、正の剰余を計算するためにtotalHeightを加算
-				const posMod = ((-currentY) % reel.totalHeight + reel.totalHeight) % reel.totalHeight;
-				remainder = posMod % this.config.symbolHeight;
+				const posMod = ((-currentY) % totalHeight + totalHeight) % totalHeight;
+				remainder = posMod % symbolHeight;
+			}
+			const distanceToNext = (symbolHeight - remainder) % symbolHeight;
+			// 停止目標となるY座標
+			const targetY = currentY + (this.config.reverseRotation ? distanceToNext : -distanceToNext);
+
+			// targetYから、その位置に該当するシンボルのインデックスを計算します。
+			// Y座標は負の値であるため、-1を掛けて正のインデックスに変換し、リールシンボル数で剰余を取ります。
+			const targetSymbolTopIndex = Math.round(-targetY / symbolHeight) % reel.symbols.length;
+
+			// 新しいターゲットオブジェクトを作成します。
+			// positionは'top'固定とすることで、シンボルが常に上端に揃うようにします。
+			const newTarget = {
+				reelIndex: index,
+				symbolIndex: targetSymbolTopIndex,
+				position: 'top'
+			};
+
+			if (this.config.debug?.stopLogs) {
+				console.log(`--- stopReel Normal to Target Fallback for Reel ${index} ---`);
+				console.log(`Current Y: ${currentY}px, Calculated Target Y: ${targetY}px, Target Index: ${targetSymbolTopIndex}`);
+				console.log(`Generated Target:`, newTarget);
 			}
 
-			const distanceToNext = (this.config.symbolHeight - remainder) % this.config.symbolHeight;
-
-			// 停止目標Y座標を計算
-			targetY = currentY + (this.config.reverseRotation ? distanceToNext : -distanceToNext);
-
-			duration = this.calculateStopDuration(distanceToNext); // 停止アニメーションにかける時間
-			const startY = currentY; // アニメーション開始時のY座標
-			const startTime = performance.now(); // アニメーション開始時刻
-
-			const animateStop = (currentTime) => {
-				const elapsed = currentTime - startTime; // 経過時間
-				const progress = Math.min(elapsed / duration, 1); // アニメーションの進行度 (0.0 - 1.0)
-				const easedProgress = this.easeOutCubic(progress); // イーズアウト関数で滑らかに減速
-
-				// 現在のY座標を計算し、`transform: translateY()`に適用
-				const newY = startY + (targetY - startY) * easedProgress;
-				reel.element.style.transform = `translateY(${newY}px)`;
-
-				// 追加するログ
-				console.log(`Reel ${index} Stop Anim: startY=${startY.toFixed(2)}px, targetY=${targetY.toFixed(2)}px, elapsed=${elapsed.toFixed(2)}ms, progress=${progress.toFixed(2)}, easedProgress=${easedProgress.toFixed(2)}, newY=${newY.toFixed(2)}px`);
-
-				if (progress < 1) {
-					requestAnimationFrame(animateStop);
-				} else {
-					// アニメーション完了: 最終位置に正確に設定し、リールの状態を更新
-					reel.element.style.transform = `translateY(${targetY}px)`;
-					reel.spinning = false;
-					reel.element.classList.remove('spinning'); // 回転中クラスを削除
-					this.checkAllStopped(); // 全てのリールが停止したかを確認
-				}
-			};
-			requestAnimationFrame(animateStop); // 停止アニメーションを開始
+			// 生成したターゲットで自身を再帰的に呼び出します。
+			// これにより、全ての停止処理がターゲットベースのロジックに統一され、挙動の差異がなくなります。
+			return this.stopReel(index, newTarget);
 		}
 	}
 
@@ -650,24 +730,25 @@ class SlotGame {
 	 * @returns {string} 抽選されたシンボルの文字（例: '🍒'）
 	 */
 	chooseSymbolByProbability() {
-		const probabilities = this.config.symbolProbabilities;
-		// 確率設定がない場合は、ランダムなシンボルを返すか、何もしない
-		if (!probabilities || probabilities.length === 0) {
-			// ここでは仮に最初のシンボルを返しますが、適切なフォールバック処理を検討してください。
-			return this.reels[0].symbols[Math.floor(Math.random() * this.reels[0].symbols.length)];
-		}
-
-		const totalWeight = probabilities.reduce((sum, p) => sum + p.weight, 0);
-		let randomValue = Math.random() * totalWeight;
-
-		for (const prob of probabilities) {
-			randomValue -= prob.weight;
-			if (randomValue <= 0) {
-				return prob.symbol;
+		// 推奨: winSymbolWeights = { '7️⃣': 1.0, 'BAR': 0.5, '🍒': 0.2, ... }
+		const weights = this.config.winSymbolWeights;
+		if (weights && Object.keys(weights).length > 0) {
+			// 全リール共通に存在するシンボルのみを対象（揃えられない候補は除外）
+			const common = this.reels.reduce((acc, r) => acc.filter(sym => r.symbols.includes(sym)), Object.keys(weights));
+			const filtered = common.filter(sym => weights[sym] > 0);
+			if (filtered.length > 0) {
+				const total = filtered.reduce((s, sym) => s + weights[sym], 0);
+				let r = Math.random() * total;
+				for (const sym of filtered) {
+					r -= weights[sym];
+					if (r <= 0) return sym;
+				}
+				return filtered[filtered.length - 1];
 			}
 		}
-		// 計算誤差などでループを抜けた場合のフォールバック
-		return probabilities[probabilities.length - 1].symbol;
+		// フォールバック: 左リールからランダム
+		const symbols = this.reels[0].symbols;
+		return symbols[Math.floor(Math.random() * symbols.length)];
 	}
 
 	/**
@@ -677,12 +758,48 @@ class SlotGame {
 	 * @returns {number} アニメーション時間 (ミリ秒)。設定された最小・最大値の範囲内に収まります。
 	 */
 	calculateStopDuration(distance) {
-		// 現在のモードに応じた速度を使用
+		// 現在のモードに応じた速度（px/frame）
 		const speed = this.isAutoMode ? this.config.autoSpeed : this.config.manualSpeed;
-		// 距離と速度からおおよその時間を計算し、フレームレート(20ms/frame)を考慮
-		let time = Math.ceil(distance / speed) * 20;
-		// 計算された時間が設定された最小・最大値の範囲に収まるように調整
+		// rAF 60fps を想定して px/frame → px/ms に換算し、イージング導関数(0)でスケール
+		const msPerFrame = 1000 / 60;
+		const deriv0 = this.getStopEasingDerivative0();
+		let time = (distance / speed) * msPerFrame * deriv0;
+		// 自動停止時は一定以上の減速時間を確保して体感差を抑える
+		if (this.isAutoMode && typeof this.config.stopBaseDurationMs === 'number') {
+			time = Math.max(time, this.config.stopBaseDurationMs);
+		}
+		// 設定された最小・最大値の範囲に収まるように調整
 		return Math.min(Math.max(time, this.config.minStopAnimTime), this.config.maxStopAnimTime);
+	}
+
+	// 停止用イージングを設定から取得
+	getStopEasingFn() {
+		switch (this.config.stopEasing) {
+			case 'linear':
+				return this.easeLinear;
+			case 'quad':
+				return this.easeOutQuad;
+			case 'sine':
+				return this.easeOutSine;
+			case 'cubic':
+			default:
+				return this.easeOutCubic;
+		}
+	}
+
+	// 選択イージングの t=0 での導関数（初速係数）
+	getStopEasingDerivative0() {
+		switch (this.config.stopEasing) {
+			case 'linear': // f(t)=t => f'(0)=1
+				return 1;
+			case 'quad': // 1 - (1-t)^2 => d/dt = 2 - 2t, t=0 => 2
+				return 2;
+			case 'sine': // sin(t*pi/2) => d/dt = (pi/2)cos(t*pi/2), t=0 => pi/2
+				return Math.PI / 2;
+			case 'cubic':
+			default: // 1 - (1-t)^3 => d/dt = 3 - 6t + 3t^2, t=0 => 3
+				return 3;
+		}
 	}
 
 	// --- イージング関数 ---
@@ -699,6 +816,21 @@ class SlotGame {
 	 * @returns {number} 補間された値
 	 */
 	easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+
+	/**
+	 * クアドラティック（2次）イーズアウト。
+	 */
+	easeOutQuad(t) { return 1 - (1 - t) * (1 - t); }
+
+	/**
+	 * サイン型イーズアウト。
+	 */
+	easeOutSine(t) { return Math.sin((t * Math.PI) / 2); }
+
+	/**
+	 * リニア（直線）イージング。
+	 */
+	easeLinear(t) { return t; }
 }
 
 // DOMが完全に読み込まれたらゲームを開始する
