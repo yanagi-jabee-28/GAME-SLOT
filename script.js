@@ -351,7 +351,14 @@ class SlotGame {
 
 			// スケジュール実行（ターゲットは有無に関係なく同時刻で適用）
 			scheduled.forEach(({ i, time }) => {
-				const target = useTargetsThisSpin ? (targets.find(t => t.reelIndex === i) || null) : null;
+				let target = useTargetsThisSpin ? (targets.find(t => t.reelIndex === i) || null) : null;
+
+				// ターゲットが指定されていない場合、確率に基づいてシンボルを抽選
+				if (!target) {
+					const chosenSymbol = this.chooseSymbolByProbability();
+					target = { reelIndex: i, symbol: chosenSymbol };
+				}
+
 				setTimeout(() => this.stopReel(i, target), time);
 			});
 		}
@@ -636,6 +643,31 @@ class SlotGame {
 			this.ui.setActionBtnText('▶ スタート'); // ボタンテキストを「スタート」に戻す
 			this.ui.setActionBtnDisabled(false); // ボタンを有効化
 		}
+	}
+
+	/**
+	 * 設定された確率に基づいて、次に狙うシンボルを抽選します。
+	 * @returns {string} 抽選されたシンボルの文字（例: '🍒'）
+	 */
+	chooseSymbolByProbability() {
+		const probabilities = this.config.symbolProbabilities;
+		// 確率設定がない場合は、ランダムなシンボルを返すか、何もしない
+		if (!probabilities || probabilities.length === 0) {
+			// ここでは仮に最初のシンボルを返しますが、適切なフォールバック処理を検討してください。
+			return this.reels[0].symbols[Math.floor(Math.random() * this.reels[0].symbols.length)];
+		}
+
+		const totalWeight = probabilities.reduce((sum, p) => sum + p.weight, 0);
+		let randomValue = Math.random() * totalWeight;
+
+		for (const prob of probabilities) {
+			randomValue -= prob.weight;
+			if (randomValue <= 0) {
+				return prob.symbol;
+			}
+		}
+		// 計算誤差などでループを抜けた場合のフォールバック
+		return probabilities[probabilities.length - 1].symbol;
 	}
 
 	/**

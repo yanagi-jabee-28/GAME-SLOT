@@ -27,6 +27,23 @@ const gameConfig = {
 		['🍋', '🍎', '🍌', '🍋', '🍉', '💎', '🍌', '🍋', '🍒', 'BAR', '🍌', '🍋', '🍉', '🍎', '🍌', '🍋', '🍇', '7️⃣', '🍇', '7️⃣', '🍌']  // 右リール
 	],
 
+	// --- シンボル出現確率 ---
+	// 各シンボルが抽選される確率を重みで定義します。
+	// この設定は、狙い撃ち機能がOFFの場合や、通常のスピンでどのシンボルを狙うかを決定する際に使用されます。
+	// 重みが大きいほど、そのシンボルが選ばれやすくなります。
+	symbolProbabilities: [
+		{ symbol: '7️⃣', weight: 5 },   // 7
+		{ symbol: 'BAR', weight: 10 },  // BAR
+		{ symbol: '💎', weight: 15 },   // ダイヤモンド
+		{ symbol: '🍉', weight: 20 },   // スイカ
+		{ symbol: '🍎', weight: 25 },   // リンゴ
+		{ symbol: '🍋', weight: 100 },   // レモン
+		{ symbol: '🍒', weight: 35 },   // チェリー
+		{ symbol: '🍌', weight: 40 },   // バナナ
+		{ symbol: '🍇', weight: 5 }    // ぶどう
+	],
+
+
 	// --- ゲーム開始時の状態 ---
 	initialReelPositions: [17, 17, 17], // 各リールの初期シンボルインデックス
 	initialIsAutoMode: true,             // 初期ゲームモード (true: 自動, false: 目押し)
