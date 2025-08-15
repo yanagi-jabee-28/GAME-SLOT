@@ -56,8 +56,8 @@ const gameConfig = {
 	initialIsAutoMode: true,             // 初期モード。trueなら「自動」、falseなら「目押し」。
 
 	// --- アニメーションと速度設定 ---
-	autoSpeed: 40,         // 自動モード時のリール回転速度 (px/フレーム)。大きいほど速い。
-	manualSpeed: 20,       // 目押しモード時のリール回転速度 (px/フレーム)。
+	autoSpeed: 50,         // 自動モード時のリール回転速度 (px/フレーム)。大きいほど速い。
+	manualSpeed: 25,       // 目押しモード時のリール回転速度 (px/フレーム)。
 	accelerationTime: 250, // スピン開始から最高速に達するまでの時間 (ミリ秒)。
 	minStopAnimTime: 200,  // 停止ボタンを押してから実際に停止するまでの最低アニメーション時間 (ミリ秒)。
 	maxStopAnimTime: 500,  // 停止ボタンを押してから実際に停止するまでの最大アニメーション時間 (ミリ秒)。
