@@ -13,7 +13,7 @@
 	--container-border-color: #555;
 	/* スロット外枠のボーダー色 */
 	--container-background-color: #000;
-	/* スロット外枠の背景色 */
+	background: transparent;
 	--reel-border-color: #444;
 	/* 各リールのボーダー色 */
 	--reel-background-color: #111;
@@ -22,6 +22,16 @@
 	/* ボタンの背景色 */
 	--button-text-color: #333;
 	/* ボタンの文字色 */
+
+	/* レバーは汎用 button:hover 等の背景色変更を無効化する */
+	.lever,
+	.lever:hover,
+	.lever:focus,
+	.lever:active,
+	.lever:disabled {
+		background: transparent !important;
+	}
+
 	--button-hover-background-color: #ddd;
 	/* ボタンホバー時の背景色 */
 	/* UIスケール: JSから --ui-scale を設定して全体を拡大/縮小できます */
