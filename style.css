@@ -395,11 +395,12 @@ button:disabled {
 	}
 }
 
-/* 勝利メッセージのスタイル: 中央に大きくフェードインしてフェードアウト */
+/* 勝利メッセージのスタイル: スロット本体の中央に重ねて表示（スマホでも一貫） */
 #winMessage {
-	position: fixed;
+	position: absolute;
+	/* .slot-container（position:relative）を基準に配置 */
 	left: 50%;
-	top: 42%;
+	top: 50%;
 	transform: translate(-50%, -50%) scale(1);
 	background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
 	color: #fff;
@@ -413,6 +414,8 @@ button:disabled {
 	opacity: 0;
 	transition: opacity 360ms ease, transform 360ms cubic-bezier(.2, .9, .2, 1);
 	border: 1px solid rgba(255, 255, 255, 0.08);
+	max-width: 90%;
+	text-align: center;
 }
 
 #winMessage.show {

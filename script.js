@@ -431,7 +431,8 @@ class SlotGame {
 			const wm = document.createElement('div');
 			wm.id = 'winMessage';
 			wm.innerHTML = `<span class="amount"></span><span class="sub">おめでとうございます!</span>`;
-			document.body.appendChild(wm);
+			// スロットコンテナ中央に重ねるため、コンテナ配下へ配置
+			(this.slotContainer || document.body).appendChild(wm);
 		}
 
 		// コントロール領域にエクスポート/インポートUIを追加
