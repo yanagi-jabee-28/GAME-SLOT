@@ -175,14 +175,11 @@ body {
 
 /* スタートボタンの大きさを抑える (全体のボタンスタイルを上書き) */
 .controls>#actionBtn {
-	max-width: 220px;
-	/* 横幅の上限を設定して巨大化を防ぐ */
-	padding: 8px 14px;
-	/* 少し小さめのパディング */
-	font-size: 14px;
-	/* 文字サイズをやや縮小 */
-	margin: 8px auto;
-	/* 中央寄せで上下の余白を調整 */
+	max-width: 320px;
+	/* モバイルも意識してやや広めに */
+	padding: 12px 18px;
+	font-size: 16px;
+	margin: 10px auto;
 }
 
 /* 他のコントロールは2列目以降に並ぶ */
@@ -207,8 +204,8 @@ body {
 button {
 	margin: 10px;
 	/* ボタン同士の間隔 */
-	padding: 10px 20px;
-	/* ボタン内部の余白（上下10px, 左右20px） */
+	padding: 12px 22px;
+	/* ベースのタップ領域をやや拡大 */
 	font-size: 16px;
 	/* 文字サイズ */
 	border: none;
@@ -223,12 +220,26 @@ button {
 	/* 文字色を設定 */
 	/* 背景色が0.2秒かけて滑らかに変化するアニメーション効果 */
 	transition: background-color 0.2s ease;
+	/* モバイルでの体感向上 */
+	-webkit-tap-highlight-color: transparent;
+	touch-action: manipulation;
+	user-select: none;
 }
 
 /* button:hover: ボタンにマウスカーソルが乗った時のスタイル */
 button:hover {
 	background-color: var(--button-hover-background-color);
 	/* 背景色を少し暗くする */
+}
+
+/* 汎用ボタンの押下視覚効果（レバーは除外） */
+button:active:not(.lever) {
+	transform: translateY(0.5px) scale(0.99);
+}
+
+button:focus-visible {
+	outline: 3px solid #8ab4f8;
+	outline-offset: 2px;
 }
 
 /* button:disabled: ボタンが無効化された時のスタイル */
@@ -327,15 +338,55 @@ button:disabled {
 @media (max-width: 480px) {
 	.payout-area {
 		max-width: 96%;
-		padding: 8px;
+		padding: 10px;
 	}
 
 	#betInput {
-		width: 72px;
+		width: 92px;
+		font-size: 18px;
+		padding: 10px 12px;
 	}
 
 	.payout-row {
-		font-size: 14px;
+		font-size: 16px;
+	}
+
+	/* ボタンのタップ領域を拡大し、テキストを見やすく */
+	button {
+		font-size: 18px;
+		padding: 14px 18px;
+		margin: 12px;
+	}
+
+	.controls>#actionBtn {
+		font-size: 18px;
+		padding: 14px 18px;
+		max-width: 92%;
+	}
+
+	/* ストップボタンを大きめに */
+	.stop-btn {
+		width: 64px;
+		height: 64px;
+		font-size: 20px;
+	}
+
+	/* レバーをやや小回りよく、はみ出し抑制 */
+	.lever {
+		left: calc(100% + 8px);
+		width: 160px;
+		height: 200px;
+	}
+
+	.lever-stick {
+		width: 110px;
+		height: 12px;
+	}
+
+	.lever-knob {
+		left: 110px;
+		width: 48px;
+		height: 48px;
 	}
 }
 

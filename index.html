@@ -9,6 +9,8 @@
 <head>
       <!-- 文字エンコーディング: UTF-8を指定。これにより、日本語を含む様々な言語が正しく表示されます。 -->
       <meta charset="UTF-8">
+      <!-- モバイル向けビューポート設定: スマホでの表示/ズームを最適化 -->
+      <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
       <!-- ページのタイトル: ブラウザのタブに表示されるテキストです。ユーザーにページの目的を伝えます。 -->
       <title>3x3 スロットゲーム</title>
       <!-- 外部スタイルシートの連携: style.cssを読み込み、このページの見た目を整えます。 -->
@@ -58,7 +60,8 @@
                   <!-- 賭け金入力と残高表示 -->
                   <div class="finance" style="display:inline-block; margin-left:16px; vertical-align:middle;">
                         <label for="betInput" style="margin-right:6px;">賭け金</label>
-                        <input id="betInput" type="number" min="1" value="10" style="width:80px;">
+                        <input id="betInput" type="number" inputmode="numeric" pattern="[0-9]*" min="1" value="10"
+                              style="width:80px;">
                         <span style="margin-left:12px;">残高: ¥<span id="balance" class="badge">1000</span></span>
                         <span style="margin-left:12px;">借金: ¥<span id="debt" class="badge">0</span></span>
                   </div>
