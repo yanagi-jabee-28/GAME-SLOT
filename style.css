@@ -364,11 +364,16 @@ button:disabled {
 		max-width: 92%;
 	}
 
-	/* ストップボタンを大きめに */
+	/* ストップボタンをさらに大きく */
 	.stop-btn {
-		width: 64px;
-		height: 64px;
-		font-size: 20px;
+		width: 80px;
+		height: 80px;
+		font-size: 24px;
+	}
+
+	/* 並びの間隔も少し広げる */
+	.manual-controls {
+		gap: 26px;
 	}
 
 	/* レバーをやや小回りよく、はみ出し抑制 */
@@ -435,18 +440,18 @@ button:disabled {
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	gap: 14px;
+	gap: 20px;
 }
 
 .stop-btn {
-	width: 54px;
-	height: 54px;
+	width: 72px;
+	height: 72px;
 	border-radius: 50%;
 	border: 2px solid #a00;
 	background: radial-gradient(circle at 30% 30%, #ff7373, #e02020 60%, #b40000 100%);
 	color: #fff;
 	font-weight: 800;
-	font-size: 18px;
+	font-size: 22px;
 	box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5), inset 0 2px 6px rgba(255, 255, 255, 0.25);
 	cursor: pointer;
 	transition: transform 0.05s ease, filter 0.15s ease, opacity 0.2s ease;
@@ -467,10 +472,12 @@ button:disabled {
 }
 
 @media (max-width: 480px) {
+
+	/* 下部の重複定義を上書きし、サイズを統一 */
 	.stop-btn {
-		width: 48px;
-		height: 48px;
-		font-size: 16px;
+		width: 72px;
+		height: 72px;
+		font-size: 22px;
 	}
 }
 
