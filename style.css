@@ -151,3 +151,98 @@ button:disabled {
 	cursor: not-allowed;
 	/* カーソルを「禁止」アイコンに変更 */
 }
+
+/* --- 配当表・ファイナンス表示の共通スタイル --- */
+.finance {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 16px;
+	vertical-align: middle;
+}
+
+#betInput {
+	width: 90px;
+	padding: 6px 8px;
+	border-radius: 6px;
+	border: 1px solid var(--container-border-color);
+	background: var(--reel-background-color);
+	color: var(--text-color);
+	font-size: 15px;
+	box-sizing: border-box;
+}
+
+.finance .badge {
+	display: inline-block;
+	padding: 6px 10px;
+	border-radius: 8px;
+	background: var(--container-background-color);
+	border: 1px solid var(--container-border-color);
+	color: var(--text-color);
+	font-weight: 600;
+	min-width: 64px;
+	text-align: center;
+}
+
+#balance.badge-positive {
+	color: #ffd166;
+}
+
+#debt {
+	color: #ff8b94;
+	font-weight: 700;
+}
+
+/* 配当表 */
+.payout-area {
+	max-width: 420px;
+	margin: 12px auto;
+	padding: 10px;
+	border-radius: 8px;
+	background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01));
+	border: 1px solid var(--container-border-color);
+	color: var(--text-color);
+}
+
+.payout-area h3 {
+	margin: 0 0 8px 0;
+	font-size: 18px;
+	font-weight: 700;
+}
+
+.payout-list {
+	display: block;
+	max-height: 240px;
+	overflow: auto;
+	border-top: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.payout-row {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 6px 8px;
+	border-bottom: 1px dashed rgba(255, 255, 255, 0.03);
+	font-size: 16px;
+	line-height: 20px;
+}
+
+.payout-row:first-of-type {
+	border-top: none;
+}
+
+/* レスポンシブ微調整 */
+@media (max-width: 480px) {
+	.payout-area {
+		max-width: 96%;
+		padding: 8px;
+	}
+
+	#betInput {
+		width: 72px;
+	}
+
+	.payout-row {
+		font-size: 14px;
+	}
+}

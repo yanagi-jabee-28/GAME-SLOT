@@ -183,23 +183,23 @@ class SlotGame {
 		this.updateDebtUI = this.updateDebtUI?.bind(this) || function () { };
 		this.updateDebtUI();
 
-		// --- 配当テーブルを winSymbolWeights を参考に自動生成 ---
-		// 方針: winSymbolWeights の値が小さいほどレア（高配当）なので、
-		//       ある基準値(desiredMaxPayout)を重みで割ることで配当倍率を算出します。
-		//       例: desiredMaxPayout=50 の場合、weight=1 -> 50x, weight=10 -> 5x, weight=500 -> 1x
-		const weights = this.config.winSymbolWeights || {};
-		const desiredMaxPayout = 50; // 最も稀なシンボルに与える倍率（調整可）
-		this.payoutTable = {};
-		const keys = Object.keys(weights);
-		let minWeight = Infinity;
-		for (const k of keys) minWeight = Math.min(minWeight, weights[k]);
-		for (const sym of keys) {
-			const w = weights[sym] || 1;
-			let mult = Math.max(1, Math.round(desiredMaxPayout / w));
-			this.payoutTable[sym] = mult;
+		// --- 配当テーブル: config.payoutTable を優先し、未指定なら winSymbolWeights から自動生成 ---
+		if (this.config.payoutTable && Object.keys(this.config.payoutTable).length > 0) {
+			// 設定ファイルに明示的な配当表がある場合はそれをそのまま使用（管理者が意図した倍率を尊重）
+			this.payoutTable = Object.assign({}, this.config.payoutTable);
+		} else {
+			// 自動生成フォールバック
+			const weights = this.config.winSymbolWeights || {};
+			const desiredMaxPayout = 50; // 最も稀なシンボルに与える倍率（調整可）
+			this.payoutTable = {};
+			const keys = Object.keys(weights);
+			for (const sym of keys) {
+				const w = weights[sym] || 1;
+				let mult = Math.max(1, Math.round(desiredMaxPayout / w));
+				this.payoutTable[sym] = mult;
+			}
 		}
-		// 明示的にレモン(🍋)は1倍にするという指示を優先
-		this.payoutTable['🍋'] = 1;
+		// レモンの倍率は config 側で設定するため、ここでは上書きしない
 
 		// --- DOM要素の参照を保持 ---
 		this.slotContainer = this.ui.elements.slotContainer; // スロットリールを格納するコンテナ
@@ -224,6 +224,32 @@ class SlotGame {
 		this.buildReels();          // リール要素をHTMLに生成
 		this.setInitialPositions(); // 各リールを初期表示位置に設定
 		this.bindEvents();          // ボタンクリックなどのイベントを登録
+		// 配当表をレンダリング
+		this.renderPayoutTable();
+	}
+
+	/**
+	 * ページ上に配当表を描画します。
+	 * this.payoutTable を参照し、シンボルと倍率を一覧表示します。
+	 */
+	renderPayoutTable() {
+		const container = document.getElementById('payoutTable');
+		if (!container) return;
+		// 既存の内容をクリア
+		container.innerHTML = '';
+		// テーブル風の簡易一覧を作る
+		const table = document.createElement('div');
+		table.className = 'payout-list';
+		const entries = Object.keys(this.payoutTable).map(k => ({ symbol: k, mult: this.payoutTable[k] }));
+		// ソート: 倍率の高い順
+		entries.sort((a, b) => b.mult - a.mult);
+		for (const e of entries) {
+			const row = document.createElement('div');
+			row.className = 'payout-row';
+			row.textContent = `${e.symbol} : ${e.mult}x`;
+			table.appendChild(row);
+		}
+		container.appendChild(table);
 	}
 
 	/**
