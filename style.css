@@ -87,6 +87,11 @@ body {
 	top: 50%;
 	transform: translateY(-50%);
 	cursor: pointer;
+	z-index: 1;
+	/* keep canvas interactive but behind controls which will have higher z-index */
+	/* quick fix: allow clicks to pass through canvas so controls remain clickable; */
+	pointer-events: auto;
+
 }
 
 /* .reel: 個々のリール（シンボルが回転する列） */
@@ -170,6 +175,10 @@ body {
 	align-items: center;
 	justify-content: center;
 	gap: 12px;
+	position: relative;
+	z-index: 10001;
+	/* ensure controls (buttons) appear above the lever canvas so they remain clickable */
+	pointer-events: auto;
 }
 
 /* スタートボタンは上段でセンタリングし、スロット本体の中心線と揃うようにする */
@@ -198,6 +207,13 @@ body {
 	/* 文字サイズをやや縮小 */
 	margin: 8px auto;
 	/* 中央寄せで上下の余白を調整 */
+}
+
+/* Ensure the main action button is definitely above the lever canvas */
+#actionBtn {
+	position: relative;
+	z-index: 10002;
+	pointer-events: auto;
 }
 
 /* 他のコントロールは2列目以降に並ぶ */

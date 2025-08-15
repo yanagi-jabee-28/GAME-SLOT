@@ -376,6 +376,24 @@ class SoundManager {
 		}
 	}
 
+	/*
+	 * Backwards-compatible play* wrappers
+	 * Some code calls playSpinStart/playReelStop/playWin while internal methods were named splay*.
+	 * Provide thin wrappers so both call sites work.
+	 */
+
+	playSpinStart() {
+		if (typeof this.splaySpinStart === 'function') return this.splaySpinStart();
+	}
+
+	playReelStop() {
+		if (typeof this.splayReelStop === 'function') return this.splayReelStop();
+	}
+
+	playWin() {
+		if (typeof this.splayWin === 'function') return this.splayWin();
+	}
+
 	// 回転中のループ音（ピコピコ音）を開始（短いビープを間欠的に鳴らす方式）
 	loopStart() {
 		if (!this.enabled || !this.ctx) return;
@@ -916,6 +934,16 @@ class SlotGame {
 	bindEvents() {
 		// モード切り替えボタンがクリックされたらtoggleModeメソッドを実行
 		this.ui.elements.modeBtn.addEventListener('click', () => this.toggleMode());
+
+		// スタート/停止ボタンをクリックでトグルできるようにバインド
+		// (存在チェックを行い、将来のセレクタ変更に耐性を持たせる)
+		const actionBtn = document.getElementById('actionBtn');
+		if (actionBtn) {
+			actionBtn.addEventListener('click', (e) => {
+				e.preventDefault();
+				this.handleAction();
+			});
+		}
 
 		// キーボード: スペースキーでスタート/停止をトグル
 		document.addEventListener('keydown', (e) => {
