@@ -445,7 +445,9 @@ class SlotGame {
 		// 賭け金入力の自動サイズ調整を初期化
 		this.initBetInputAutoSize();
 		// 開発者モードパネルを準備（表示はトグル可能）
-		this.renderDevPanel();
+		if (this.config && this.config.devPanelEnabled) {
+			this.renderDevPanel();
+		}
 		// Ctrl+D で開発者パネル表示/非表示を切り替え
 		document.addEventListener('keydown', (e) => {
 			if (e.ctrlKey && e.key.toLowerCase() === 'd') {
@@ -635,6 +637,8 @@ class SlotGame {
 	 * 開発者パネルを描画します（トグルで表示/非表示）。
 	 */
 	renderDevPanel() {
+		// 設定で無効化されている場合は何もしない
+		if (!this.config || !this.config.devPanelEnabled) return;
 		// 既に存在する場合は更新のみ
 		let panel = document.getElementById('devPanel');
 		if (!panel) {

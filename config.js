@@ -135,6 +135,9 @@ const gameConfig = {
 		frameLogs: false, // trueにするとフレームごとのログを大量出力。実運用では必ずfalseのままにしてください。
 	},
 
+	// 開発者パネルを初期化するかどうか（true: 有効, false: 無効）
+	devPanelEnabled: true,
+
 	// --- ファイナンス設定 ---
 	// デフォルトのプレイヤー残高（ローカル開始時の初期値）
 	initialBalance: 1000,
