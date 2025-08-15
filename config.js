@@ -129,6 +129,16 @@ const gameConfig = {
 	initialBalance: 1000,
 	// 賭け金の最小値
 	minBet: 1,
+
+	// --- 借金(クレジット)設定 ---
+	// enabled: 借金機能を有効にするか
+	// creditLimit: プレイヤーが最大で借りられる金額（利息前の元本）
+	// interestRate: 借入時に即時適用する利率（例: 0.1 = 10%）。利息モデルは単純化して即時一括で計上します。
+	credit: {
+		enabled: true,
+		creditLimit: 500,
+		interestRate: 0.10
+	},
 	// 簡易ペイアウトテーブル: key はシンボルあるいはシンボル種別
 	// 値は賭け金に対する倍率（例: 10 倍なら return bet * 10）
 	payoutTable: {

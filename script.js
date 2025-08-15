@@ -174,7 +174,14 @@ class SlotGame {
 
 		// --- ファイナンス状態 ---
 		this.balance = Number(config.initialBalance) || 0; // プレイヤーの所持金
+		// 借金状態: debt は利息を含めた現時点での返済総額を表す
+		this.debt = 0;
+		// credit に関する設定を保存
+		this.creditConfig = (config.credit) ? config.credit : { enabled: false, creditLimit: 0, interestRate: 0 };
 		this.updateBalanceUI();
+		// 初回の借金UIを更新
+		this.updateDebtUI = this.updateDebtUI?.bind(this) || function () { };
+		this.updateDebtUI();
 
 		// --- 配当テーブルを winSymbolWeights を参考に自動生成 ---
 		// 方針: winSymbolWeights の値が小さいほどレア（高配当）なので、
@@ -356,13 +363,32 @@ class SlotGame {
 		// 賭け金の処理: 目押し/自動に関わらず、開始時に賭け金を引く
 		const betInput = document.getElementById('betInput');
 		const bet = Math.max(Number(betInput?.value) || 0, this.config.minBet);
+
+		// 残高が足りない場合、借入で補填できるか試みる
 		if (bet > this.balance) {
-			// 残高不足: ボタンを有効化して中断
-			console.warn('残高不足: bet=', bet, 'balance=', this.balance);
-			this.ui.setActionBtnText('▶ スタート');
-			this.ui.setActionBtnDisabled(false);
-			return;
+			const need = bet - this.balance;
+			if (this.creditConfig.enabled) {
+				const available = Math.max(0, this.creditConfig.creditLimit - this.debt);
+				if (available <= 0) {
+					console.warn('借入上限に達しています。bet=', bet, 'balance=', this.balance, 'debt=', this.debt);
+					this.ui.setActionBtnText('▶ スタート');
+					this.ui.setActionBtnDisabled(false);
+					return;
+				}
+				const toBorrow = Math.min(need, available);
+				const interest = Math.ceil(toBorrow * (this.creditConfig.interestRate || 0));
+				this.debt += toBorrow + interest; // 利息込みで負債計上
+				this.balance += toBorrow; // 借入元本を残高に反映
+				console.info(`借入: ¥${toBorrow} 利息: ¥${interest} 借金合計: ¥${this.debt}`);
+				this.updateDebtUI();
+			} else {
+				console.warn('残高不足かつ借入無効: bet=', bet, 'balance=', this.balance);
+				this.ui.setActionBtnText('▶ スタート');
+				this.ui.setActionBtnDisabled(false);
+				return;
+			}
 		}
+		// 賭け金を引く
 		this.balance -= bet;
 		this.currentBet = bet; // ラウンドごとの賭け金を保持
 		this.updateBalanceUI();
@@ -867,11 +893,21 @@ class SlotGame {
 			this.ui.setActionBtnDisabled(false); // ボタンを有効化
 
 			// 全リール停止後: 当たり判定とペイアウト処理
-			const payout = this.evaluatePayout();
+			let payout = this.evaluatePayout();
 			if (payout > 0) {
-				this.balance += payout;
-				this.updateBalanceUI();
-				console.log(`Win! payout=¥${payout}, new balance=¥${this.balance}`);
+				// 借金があればまず返済に充てる（全額返済可能な場合は残りを残高へ）
+				if (this.debt > 0) {
+					const repay = Math.min(this.debt, payout);
+					this.debt -= repay;
+					payout -= repay;
+					this.updateDebtUI();
+					console.log(`Debt repaid: ¥${repay}, remaining debt=¥${this.debt}`);
+				}
+				if (payout > 0) {
+					this.balance += payout;
+					this.updateBalanceUI();
+					console.log(`Win! payout=¥${payout}, new balance=¥${this.balance}`);
+				}
 			}
 		}
 	}
@@ -937,6 +973,14 @@ class SlotGame {
 	updateBalanceUI() {
 		const el = document.getElementById('balance');
 		if (el) el.textContent = String(this.balance);
+	}
+
+	/**
+	 * 借金表示を更新します。
+	 */
+	updateDebtUI() {
+		const el = document.getElementById('debt');
+		if (el) el.textContent = String(this.debt);
 	}
 
 	/**
