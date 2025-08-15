@@ -7,54 +7,61 @@
 <html lang="ja">
 
 <head>
-	<!-- 文字エンコーディング: UTF-8を指定。これにより、日本語を含む様々な言語が正しく表示されます。 -->
-	<meta charset="UTF-8">
-	<!-- ページのタイトル: ブラウザのタブに表示されるテキストです。ユーザーにページの目的を伝えます。 -->
-	<title>3x3 スロットゲーム</title>
-	<!-- 外部スタイルシートの連携: style.cssを読み込み、このページの見た目を整えます。 -->
-	<link rel="stylesheet" href="style.css">
+      <!-- 文字エンコーディング: UTF-8を指定。これにより、日本語を含む様々な言語が正しく表示されます。 -->
+      <meta charset="UTF-8">
+      <!-- ページのタイトル: ブラウザのタブに表示されるテキストです。ユーザーにページの目的を伝えます。 -->
+      <title>3x3 スロットゲーム</title>
+      <!-- 外部スタイルシートの連携: style.cssを読み込み、このページの見た目を整えます。 -->
+      <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-	<!-- ゲームのメインタイトル -->
-	<h1>🎰 3x3 スロットゲーム 🎰</h1>
+      <!-- ゲームのメインタイトル -->
+      <h1>🎰 3x3 スロットゲーム 🎰</h1>
 
-	<!-- 
+      <!-- 
       スロットマシンのコンテナ:
       この<div>の中に、JavaScriptによってスロットのリールが動的に生成・配置されます。
       注意: id="slot-machine" は script.js 内でリールを配置する基準点として使用されています。
             このidを変更する場合は、script.js内の関連する記述も必ず修正してください。
     -->
-	<div class="slot-container" id="slot-machine">
-		<!-- リールはJavaScript (script.js) によって、このコメント部分に動的に追加されます -->
-	</div>
+      <div class="slot-container" id="slot-machine">
+            <!-- リールはJavaScript (script.js) によって、このコメント部分に動的に追加されます -->
+      </div>
 
-	<!-- 
+      <!-- 
       改行タグ: 現在はレイアウトの調整のために使用されていますが、
       将来的にはCSSのmarginやpaddingで余白を調整する方法がより推奨されます。
     -->
-	<br>
+      <br>
 
-	<!-- ゲームの操作ボタンをまとめるコンテナ -->
-	<div class="controls">
-		<!-- 
+      <!-- ゲームの操作ボタンをまとめるコンテナ -->
+      <div class="controls">
+            <!-- 
           アクションボタン:
           ゲームの「スタート」および、目押しモード時の「ストップ」機能を担います。
           注意: id="actionBtn" は script.js 内でクリックイベントを検知するために不可欠です。
                 このidを変更すると、ボタンが機能しなくなりますので、ご注意ください。
         -->
-		<button id="actionBtn">▶ スタート</button>
-		<!-- 
+            <button id="actionBtn">▶ スタート</button>
+            <!-- 
           モード切り替えボタン:
           リールの停止方法を「自動」と「目押し」で切り替えます。
           注意: id="modeBtn" は script.js 内でモード切替のロジックと連携しています。
                 このidを変更すると、モード切替が動作しなくなります。
         -->
-		<button id="modeBtn">モード: 自動</button>
-	</div>
+            <button id="modeBtn">モード: 自動</button>
 
-	<!-- 
+            <!-- 賭け金入力と残高表示 -->
+            <div class="finance" style="display:inline-block; margin-left:16px; vertical-align:middle;">
+                  <label for="betInput" style="margin-right:6px;">賭け金</label>
+                  <input id="betInput" type="number" min="1" value="10" style="width:80px;">
+                  <span style="margin-left:12px;">残高: ¥<span id="balance">1000</span></span>
+            </div>
+      </div>
+
+      <!-- 
       外部JavaScriptファイルの読み込み:
       defer属性は、HTMLの解析完了後にスクリプトを実行させるための重要な属性です。
       これにより、ページの表示速度が向上します。
@@ -64,10 +71,10 @@
             必ず config.js を先に読み込む必要があります。
             この順序を変更すると、ゲームが正常に動作しなくなる可能性があります。
     -->
-	<!-- config.js: ゲームの基本設定（リールの絵柄、速度など）を定義します -->
-	<script src="config.js" defer></script>
-	<!-- script.js: ゲームのメインロジック（開始、停止、モード切替など）を制御します -->
-	<script src="script.js" defer></script>
+      <!-- config.js: ゲームの基本設定（リールの絵柄、速度など）を定義します -->
+      <script src="config.js" defer></script>
+      <!-- script.js: ゲームのメインロジック（開始、停止、モード切替など）を制御します -->
+      <script src="script.js" defer></script>
 
 </body>
 

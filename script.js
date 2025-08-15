@@ -172,6 +172,28 @@ class SlotGame {
 		this.config = config;
 		this.ui = new UIManager(config); // UIManagerのインスタンスを生成
 
+		// --- ファイナンス状態 ---
+		this.balance = Number(config.initialBalance) || 0; // プレイヤーの所持金
+		this.updateBalanceUI();
+
+		// --- 配当テーブルを winSymbolWeights を参考に自動生成 ---
+		// 方針: winSymbolWeights の値が小さいほどレア（高配当）なので、
+		//       ある基準値(desiredMaxPayout)を重みで割ることで配当倍率を算出します。
+		//       例: desiredMaxPayout=50 の場合、weight=1 -> 50x, weight=10 -> 5x, weight=500 -> 1x
+		const weights = this.config.winSymbolWeights || {};
+		const desiredMaxPayout = 50; // 最も稀なシンボルに与える倍率（調整可）
+		this.payoutTable = {};
+		const keys = Object.keys(weights);
+		let minWeight = Infinity;
+		for (const k of keys) minWeight = Math.min(minWeight, weights[k]);
+		for (const sym of keys) {
+			const w = weights[sym] || 1;
+			let mult = Math.max(1, Math.round(desiredMaxPayout / w));
+			this.payoutTable[sym] = mult;
+		}
+		// 明示的にレモン(🍋)は1倍にするという指示を優先
+		this.payoutTable['🍋'] = 1;
+
 		// --- DOM要素の参照を保持 ---
 		this.slotContainer = this.ui.elements.slotContainer; // スロットリールを格納するコンテナ
 		this.actionBtn = this.ui.elements.actionBtn; // スタート/ストップボタン
@@ -330,6 +352,20 @@ class SlotGame {
 
 		// 現在のモードに応じたリール回転速度を設定
 		const speed = this.isAutoMode ? this.config.autoSpeed : this.config.manualSpeed;
+
+		// 賭け金の処理: 目押し/自動に関わらず、開始時に賭け金を引く
+		const betInput = document.getElementById('betInput');
+		const bet = Math.max(Number(betInput?.value) || 0, this.config.minBet);
+		if (bet > this.balance) {
+			// 残高不足: ボタンを有効化して中断
+			console.warn('残高不足: bet=', bet, 'balance=', this.balance);
+			this.ui.setActionBtnText('▶ スタート');
+			this.ui.setActionBtnDisabled(false);
+			return;
+		}
+		this.balance -= bet;
+		this.currentBet = bet; // ラウンドごとの賭け金を保持
+		this.updateBalanceUI();
 
 		// 全てのリールに対して回転開始命令を出す
 		this.reels.forEach((reel, i) => {
@@ -829,7 +865,78 @@ class SlotGame {
 			this.isSpinning = false; // ゲーム全体が停止状態であることを示す
 			this.ui.setActionBtnText('▶ スタート'); // ボタンテキストを「スタート」に戻す
 			this.ui.setActionBtnDisabled(false); // ボタンを有効化
+
+			// 全リール停止後: 当たり判定とペイアウト処理
+			const payout = this.evaluatePayout();
+			if (payout > 0) {
+				this.balance += payout;
+				this.updateBalanceUI();
+				console.log(`Win! payout=¥${payout}, new balance=¥${this.balance}`);
+			}
 		}
+	}
+
+	/**
+	 * 検出されたリールの停止位置から当たりを評価し、賭け金に対する配当額を返します。
+	 * シンプル実装: 横一列（top/middle/bottom）で同一シンボルが揃えば配当。
+	 * @returns {number} payout (0 なら外れ)
+	 */
+	evaluatePayout() {
+		// helper: visible symbol index at a given row position (0=top,1=middle,2=bottom)
+		const visibleIndexAtRow = (reel, row) => {
+			const y = this.ui.getCurrentTranslateY(reel.element);
+			// top index
+			const topIdx = (Math.round(-y / this.config.symbolHeight) % reel.symbols.length + reel.symbols.length) % reel.symbols.length;
+			// row offset: top + row
+			return (topIdx + row) % reel.symbols.length;
+		};
+
+		let totalPayout = 0;
+		const bet = this.currentBet || 0;
+
+		// check horizontal lines: row = 0 (top), 1 (middle), 2 (bottom)
+		for (let row = 0; row < 3; row++) {
+			const syms = this.reels.map(r => r.symbols[visibleIndexAtRow(r, row)]);
+			if (syms.every(s => s === syms[0])) {
+				const sym = syms[0];
+				const mult = this.payoutTable[sym] || 0;
+				totalPayout += Math.floor(bet * mult);
+			}
+		}
+
+		// check diagonals (assuming 3 reels): TL->BR and BL->TR
+		if (this.reels.length === 3) {
+			// TL->BR: top of reel0, middle of reel1, bottom of reel2 (rows 0,1,2)
+			const diag1 = [
+				this.reels[0].symbols[visibleIndexAtRow(this.reels[0], 0)],
+				this.reels[1].symbols[visibleIndexAtRow(this.reels[1], 1)],
+				this.reels[2].symbols[visibleIndexAtRow(this.reels[2], 2)]
+			];
+			if (diag1.every(s => s === diag1[0])) {
+				const mult = this.payoutTable[diag1[0]] || 0;
+				totalPayout += Math.floor(bet * mult);
+			}
+			// BL->TR: bottom of reel0, middle of reel1, top of reel2 (rows 2,1,0)
+			const diag2 = [
+				this.reels[0].symbols[visibleIndexAtRow(this.reels[0], 2)],
+				this.reels[1].symbols[visibleIndexAtRow(this.reels[1], 1)],
+				this.reels[2].symbols[visibleIndexAtRow(this.reels[2], 0)]
+			];
+			if (diag2.every(s => s === diag2[0])) {
+				const mult = this.payoutTable[diag2[0]] || 0;
+				totalPayout += Math.floor(bet * mult);
+			}
+		}
+
+		return totalPayout;
+	}
+
+	/**
+	 * 残高表示を更新します。
+	 */
+	updateBalanceUI() {
+		const el = document.getElementById('balance');
+		if (el) el.textContent = String(this.balance);
 	}
 
 	/**
