@@ -97,8 +97,8 @@ const gameConfig = {
 
 	// --- 当たり演出制御 ---
 	// 備考: ここで設定した確率で、水平または斜めの当たり演出が発動します。
-	winHorizontalProbability: 0.2, // 水平ラインで当たりを発生させる確率 (0.0 ~ 1.0)。
-	winDiagonalProbability: 0.1,   // 斜めラインで当たりを発生させる確率 (0.0 ~ 1.0)。
+	winHorizontalProbability: 0.6, // 水平ラインで当たりを発生させる確率 (0.0 ~ 1.0)。
+	winDiagonalProbability: 0.4,   // 斜めラインで当たりを発生させる確率 (0.0 ~ 1.0)。
 
 	/* --- (旧方式: 後方互換のための参考) ---
 	 * かつては水平/斜めの区別がなく、単一の発動確率で制御していました。
@@ -109,7 +109,15 @@ const gameConfig = {
 	// 当たり演出時に、どの絵柄を揃えるかの重み付け。
 	// `symbolProbabilities`とは異なり、当たりが確定した際に使用されます。
 	winSymbolWeights: {
-		'7️⃣': 1, 'BAR': 10, '💎': 15, '🍉': 20, '🍎': 25, '🍒': 35, '🍌': 40, '🍋': 500, '🍇': 5
+		'7️⃣': 1,
+		'BAR': 10,
+		'💎': 15,
+		'🍉': 20,
+		'🍎': 25,
+		'🍒': 35,
+		'🍌': 40,
+		'🍋': 500,
+		'🍇': 5
 	},
 	// 当たりを揃えるライン。'top', 'middle', 'bottom', 'random' から選択。
 	winRowMode: 'random',
@@ -136,13 +144,13 @@ const gameConfig = {
 	// interestRate: 借入時に即時適用する利率（例: 0.1 = 10%）。利息モデルは単純化して即時一括で計上します。
 	credit: {
 		enabled: true,
-		creditLimit: 500,
+		creditLimit: 50000,
 		interestRate: 0.10
 	},
 	// 簡易ペイアウトテーブル: key はシンボルあるいはシンボル種別
 	// 値は賭け金に対する倍率（例: 10 倍なら return bet * 10）
 	payoutTable: {
-		'7\ufe0f\u20e3': 50, // '7' 揃いは高配当
+		'7️⃣': 50, // '7' 揃いは高配当
 		'BAR': 20,
 		'💎': 10,
 		'🍉': 8,
