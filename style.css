@@ -62,7 +62,34 @@ body {
 	/* 上下の余白と、左右の自動中央配置 */
 	border-radius: 10px;
 	/* 角を丸くして柔らかい印象に */
+	position: relative;
 }
+
+/* The inner slot machine area that receives .reel elements should
+   arrange them horizontally. Previously reels were appended into
+   #slot-machine but that element had no layout style, causing
+   reels to stack vertically. Make it a flex row. */
+#slot-machine {
+	display: inline-flex;
+	flex-direction: row;
+	align-items: flex-start;
+	gap: 8px;
+}
+
+#lever-canvas {
+	width: 280px;
+	/* match canvas width (script.js sets canvas.width = 280) */
+	height: 480px;
+	/* match canvas height (script.js sets canvas.height = 480) */
+	position: absolute;
+	/* offset adjusted to keep knob visible near the machine */
+	right: -200px;
+	top: 50%;
+	transform: translateY(-50%);
+	cursor: pointer;
+}
+
+/* .reel: 個々のリール（シンボルが回転する列） */
 
 /* .reel: 個々のリール（シンボルが回転する列） */
 
