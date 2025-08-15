@@ -30,6 +30,14 @@
             <!-- リールはJavaScript (script.js) によって、このコメント部分に動的に追加されます -->
       </div>
 
+      <!-- 右側レバー（棒+球の図形描画）: 本体は動かさず、右横に固定表示 -->
+      <button class="lever" id="slotLever" aria-label="レバー" title="スペースキーまたはクリックでスタート/停止">
+            <span class="lever-inner" aria-hidden="true">
+                  <span class="lever-knob"></span>
+                  <span class="lever-stick"></span>
+            </span>
+      </button>
+
       <!-- 目押しボタン（スロットと配当表の間） -->
       <div class="manual-controls" id="manualControls" aria-label="目押しボタン">
             <button class="stop-btn" id="stopBtn0" title="左リールを止める (1)" aria-label="左リールを止める">1</button>

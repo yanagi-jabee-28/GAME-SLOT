@@ -401,6 +401,7 @@ class SlotGame {
 		this.buildReels();          // リール要素をHTMLに生成
 		this.setInitialPositions(); // 各リールを初期表示位置に設定
 		this.bindEvents();          // ボタンクリックなどのイベントを登録
+		this.initLever();           // レバー初期化（右側レバーの押下演出と連動）
 		// 勝利メッセージ要素を作成して body に追加（存在しない場合）
 		if (!document.getElementById('winMessage')) {
 			const wm = document.createElement('div');
@@ -842,12 +843,13 @@ class SlotGame {
 			});
 		});
 
-		// キーボード: スペースキーでスタート/停止をトグル
+		// キーボード: スペースキーでスタート/停止をトグル（レバーも連動して下げる）
 		document.addEventListener('keydown', (e) => {
 			if (e.code === 'Space') {
 				// 長押しの連続発火を防止し、ページスクロールなどの既定動作を抑止
 				if (e.repeat) return;
 				e.preventDefault();
+				this.pullLeverVisual();
 				this.handleAction();
 			}
 			// 1/2/3 キーで対応するリールを止める（目押しモード時のみ）
@@ -864,6 +866,53 @@ class SlotGame {
 		 * キーボード操作（Enter キー等）やスクリーンリーダー対応を強化する場合は、
 		 * ボタン要素にフォーカス可視化や aria-pressed などの属性付与も検討してください。
 		 */
+	}
+
+	/**
+	 * レバーUIの初期化とイベント結線。
+	 * - クリック/タッチでレバーを下げ、ゲーム開始/停止をトグル
+	 * - スペースキー押下時の視覚効果と統一
+	 */
+	initLever() {
+		this.leverEl = document.getElementById('slotLever');
+		if (!this.leverEl) return; // レバーが存在しない場合は何もしない
+
+		// レバーはスロット本体の .slot-container にぶら下げて、右横に絶対配置する
+		try {
+			if (this.slotContainer && this.leverEl.parentElement !== this.slotContainer) {
+				this.slotContainer.appendChild(this.leverEl);
+			}
+		} catch (e) { /* ignore */ }
+
+		const onPress = (ev) => {
+			if (ev) ev.preventDefault();
+			this.pullLeverVisual();
+			this.handleAction();
+		};
+
+		this.leverEl.addEventListener('click', onPress);
+		this.leverEl.addEventListener('keydown', (e) => {
+			if (e.code === 'Space' || e.key === 'Enter') {
+				e.preventDefault();
+				onPress(e);
+			}
+		});
+	}
+
+	/** レバーの見た目だけを一時的に「ガコン」と下げる（回転アニメ） */
+	pullLeverVisual() {
+		if (!this.leverEl) return;
+		// アニメ再生を毎回確実に再トリガする（クラスを外してリフロー後に付け直す）
+		const el = this.leverEl;
+		el.classList.remove('is-down'); // 旧クラスはクリア
+		el.classList.remove('is-pulling');
+		// リフロー強制（アニメ再適用のため）
+		void el.offsetWidth;
+		el.classList.add('is-pulling');
+		if (this._leverTimer) clearTimeout(this._leverTimer);
+		this._leverTimer = setTimeout(() => {
+			el.classList.remove('is-pulling');
+		}, 520);
 	}
 
 	/**

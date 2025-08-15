@@ -62,6 +62,8 @@ body {
 	/* 上下の余白と、左右の自動中央配置 */
 	border-radius: 10px;
 	/* 角を丸くして柔らかい印象に */
+	position: relative;
+	/* レバーをこのボックスの右外に絶対配置するための基準にする */
 }
 
 /* .reel: 個々のリール（シンボルが回転する列） */
@@ -408,5 +410,124 @@ button:disabled {
 		width: 48px;
 		height: 48px;
 		font-size: 16px;
+	}
+}
+
+/* --- スロット右側のレバー（図形描画: 棒+球） --- */
+.lever {
+	position: absolute;
+	top: 50%;
+	left: calc(100% + 24px);
+	/* スロット本体の右に固定配置（本体位置は不変） */
+	transform: translateY(-50%);
+	width: 210px;
+	/* アーム+ノブを含むクリック領域に拡張 */
+	height: 260px;
+	/* 描画領域 */
+	background: transparent;
+	border: none;
+	padding: 0;
+	cursor: pointer;
+	outline: none;
+	/* クリックしやすいように当たり判定を確保 */
+	display: inline-block;
+	user-select: none;
+}
+
+.lever:focus-visible {
+	outline: 2px solid #8ab4f8;
+	outline-offset: 2px;
+}
+
+.lever-inner {
+	position: relative;
+	width: 100%;
+	height: 100%;
+	display: block;
+	will-change: transform;
+	/* 回転の支点を根本（左中央）に */
+	transform-origin: 0% 50%;
+	/* 初期角度: -30度（GPU合成のため translateZ(0) を加える） */
+	transform: translateZ(0) rotate(-30deg);
+}
+
+/* 根本の固定キャップ（スロットに固定されて見える） */
+.lever::before {
+	content: '';
+	position: absolute;
+	left: 0;
+	top: 50%;
+	transform: translate(-50%, -50%);
+	width: 22px;
+	height: 22px;
+	border-radius: 50%;
+	background: radial-gradient(circle at 30% 30%, #e9eef1, #b7c0c6 60%, #8b949a 100%);
+	box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.6), 0 4px 10px rgba(0, 0, 0, 0.5);
+}
+
+/* レバーの単発往復回転アニメーション（バウンドなし） */
+@keyframes lever-pull {
+	0% {
+		transform: translateZ(0) rotate(-30deg);
+	}
+
+	50% {
+		transform: translateZ(0) rotate(30deg);
+	}
+
+	100% {
+		transform: translateZ(0) rotate(-30deg);
+	}
+}
+
+/* トリガ中だけ回転アニメを付与（クリック時はJSでクラス付与） */
+.lever.is-pulling .lever-inner {
+	animation: lever-pull 520ms cubic-bezier(.45, .05, .55, .95);
+}
+
+/* 棒（アーム）: 根本から右方向へ伸びる横棒 */
+.lever-stick {
+	position: absolute;
+	left: 0;
+	top: 50%;
+	transform: translateY(-50%);
+	width: 150px;
+	height: 16px;
+	border-radius: 10px;
+	background: linear-gradient(180deg, #cfd8dd, #9aa4aa 40%, #7f8a90 60%, #6a7378 100%);
+	box-shadow: inset 0 0 2px rgba(255, 255, 255, 0.4), 0 4px 14px rgba(0, 0, 0, 0.5);
+}
+
+/* 球（ノブ）: アーム先端の丸ノブ */
+.lever-knob {
+	position: absolute;
+	left: 150px;
+	/* アーム長に合わせる */
+	top: 50%;
+	transform: translate(-50%, -50%);
+	width: 58px;
+	height: 58px;
+	border-radius: 50%;
+	background: radial-gradient(circle at 30% 30%, #ff8d8d, #e43737 55%, #a80000 100%);
+	border: 2px solid #7a0000;
+	box-shadow: inset 0 6px 12px rgba(255, 255, 255, 0.25), 0 8px 18px rgba(0, 0, 0, 0.6);
+}
+
+@media (max-width: 640px) {
+	.lever {
+		left: calc(100% + 12px);
+		width: 180px;
+		height: 220px;
+	}
+
+	.lever-stick {
+		width: 130px;
+		height: 14px;
+	}
+
+	.lever-knob {
+		left: 130px;
+		width: 52px;
+		height: 52px;
 	}
 }
