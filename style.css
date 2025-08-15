@@ -273,3 +273,42 @@ button:disabled {
 		font-size: 14px;
 	}
 }
+
+/* 勝利メッセージのスタイル: 中央に大きくフェードインしてフェードアウト */
+#winMessage {
+	position: fixed;
+	left: 50%;
+	top: 42%;
+	transform: translate(-50%, -50%) scale(1);
+	background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+	color: #fff;
+	padding: 18px 26px;
+	border-radius: 12px;
+	box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+	font-size: 30px;
+	font-weight: 800;
+	z-index: 10000;
+	pointer-events: none;
+	opacity: 0;
+	transition: opacity 360ms ease, transform 360ms cubic-bezier(.2, .9, .2, 1);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+#winMessage.show {
+	opacity: 1;
+	transform: translate(-50%, -50%) scale(1.06);
+}
+
+#winMessage .amount {
+	color: #ffd166;
+	text-shadow: 0 3px 10px rgba(0, 0, 0, 0.6);
+	display: block;
+	font-size: 36px;
+}
+
+#winMessage .sub {
+	font-size: 14px;
+	color: rgba(255, 255, 255, 0.9);
+	margin-top: 6px;
+	font-weight: 600;
+}

@@ -59,8 +59,8 @@ const gameConfig = {
 	autoSpeed: 40,         // 自動モード時のリール回転速度 (px/フレーム)。大きいほど速い。
 	manualSpeed: 20,       // 目押しモード時のリール回転速度 (px/フレーム)。
 	accelerationTime: 250, // スピン開始から最高速に達するまでの時間 (ミリ秒)。
-	minStopAnimTime: 750,  // 停止ボタンを押してから実際に停止するまでの最低アニメーション時間 (ミリ秒)。
-	maxStopAnimTime: 1000, // 停止ボタンを押してから実際に停止するまでの最大アニメーション時間 (ミリ秒)。
+	minStopAnimTime: 200,  // 停止ボタンを押してから実際に停止するまでの最低アニメーション時間 (ミリ秒)。
+	maxStopAnimTime: 500,  // 停止ボタンを押してから実際に停止するまでの最大アニメーション時間 (ミリ秒)。
 	reverseRotation: true, // リールの回転方向。true: 下から上へ, false: 上から下へ。
 	stopEasing: 'cubic',   // 停止時の減速アニメーションの種類。'cubic', 'quad', 'sine', 'linear'から選択。
 	stopBaseDurationMs: 240, // 自動停止時の減速にかかる基本時間 (ミリ秒)。
@@ -140,6 +140,18 @@ const gameConfig = {
 	initialBalance: 1000,
 	// 賭け金の最小値
 	minBet: 1,
+
+	// --- サウンド設定 ---
+	// file: 相対パスを指定すると外部ファイルを読み込みます。未指定時は簡易合成音を使用します。
+	sounds: {
+		enabled: true,
+		volume: 0.8, // 全体音量 0.0 - 1.0
+		files: {
+			spinStart: '', // 例: 'assets/sfx/spin-start.mp3'
+			reelStop: '',   // 例: 'assets/sfx/stop.wav'
+			win: ''         // 例: 'assets/sfx/win.mp3'
+		}
+	},
 
 	// --- 借金(クレジット)設定 ---
 	// enabled: 借金機能を有効にするか

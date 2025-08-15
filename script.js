@@ -241,6 +241,140 @@ class UIManager {
 	}
 }
 
+/**
+ * SoundManager: WebAudio を使ってサウンドを管理します。
+ * - 設定でファイルが指定されていれば fetch で読み込み再生
+ * - 未指定時は簡易的な beep 合成で代替
+ */
+class SoundManager {
+	constructor(config) {
+		this.config = config || {};
+		this.enabled = Boolean(this.config.sounds?.enabled);
+		this.volume = Number(this.config.sounds?.volume ?? 0.8);
+		this.files = this.config.sounds?.files || {};
+		this.ctx = null;
+		this.buffers = {};
+		if (this.enabled) this._init();
+	}
+
+	async _init() {
+		try {
+			this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+			// 可能ならファイルをプリロード
+			for (const key of ['spinStart', 'reelStop', 'win']) {
+				const path = this.files[key];
+				if (path) {
+					try {
+						const res = await fetch(path);
+						const ab = await res.arrayBuffer();
+						const buf = await this.ctx.decodeAudioData(ab.slice(0));
+						this.buffers[key] = buf;
+					} catch (e) {
+						// 失敗しても合成でフォールバック
+						console.warn('Sound preload failed for', key, e);
+					}
+				}
+			}
+		} catch (e) {
+			console.warn('WebAudio init failed, sound disabled', e);
+			this.enabled = false;
+		}
+	}
+
+	_playBuffer(buf) {
+		if (!this.enabled || !this.ctx) return;
+		const src = this.ctx.createBufferSource();
+		src.buffer = buf;
+		const gain = this.ctx.createGain();
+		gain.gain.value = this.volume;
+		src.connect(gain).connect(this.ctx.destination);
+		src.start();
+	}
+
+	playSpinStart() {
+		if (!this.enabled) return;
+		if (this.buffers.spinStart) return this._playBuffer(this.buffers.spinStart);
+		// 合成: 低周波の短いノイズ的なサウンド
+		this._synthBeep(120, 0.12, 'sine');
+	}
+
+	playReelStop() {
+		if (!this.enabled) return;
+		if (this.buffers.reelStop) return this._playBuffer(this.buffers.reelStop);
+		// 停止音は目立たせるため、ループ音より大きめに再生する
+		const vol = Math.min(1.0, this.volume * 1.6);
+		this._synthBeep(800, 0.08, 'square', vol);
+	}
+
+	playWin() {
+		if (!this.enabled) return;
+		if (this.buffers.win) return this._playBuffer(this.buffers.win);
+		// 合成: 上昇トーンのメロディ風
+		this._synthSequence([600, 900, 1200], 0.12);
+	}
+
+	_synthBeep(freq = 440, dur = 0.1, type = 'sine', volOverride = null) {
+		if (!this.ctx) return;
+		const o = this.ctx.createOscillator();
+		const g = this.ctx.createGain();
+		o.type = type;
+		o.frequency.value = freq;
+		const vol = (typeof volOverride === 'number') ? volOverride : this.volume;
+		g.gain.value = vol;
+		o.connect(g).connect(this.ctx.destination);
+		const now = this.ctx.currentTime;
+		g.gain.setValueAtTime(0.0001, now);
+		// より素直なアタックで短いビープ向けに線形フェードを使用
+		g.gain.linearRampToValueAtTime(vol, now + Math.min(0.01, dur / 4));
+		o.start(now);
+		g.gain.linearRampToValueAtTime(0.0001, now + dur);
+		o.stop(now + dur + 0.02);
+	}
+
+	_synthSequence(freqs = [440, 660], dur = 0.12) {
+		if (!this.ctx) return;
+		let t = this.ctx.currentTime;
+		for (const f of freqs) {
+			const o = this.ctx.createOscillator();
+			const g = this.ctx.createGain();
+			o.type = 'sine';
+			o.frequency.value = f;
+			g.gain.value = this.volume;
+			o.connect(g).connect(this.ctx.destination);
+			g.gain.setValueAtTime(0.0001, t);
+			g.gain.exponentialRampToValueAtTime(this.volume, t + 0.01);
+			o.start(t);
+			g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+			o.stop(t + dur + 0.02);
+			t += dur;
+		}
+	}
+
+	// 回転中のループ音（ピコピコ音）を開始（短いビープを間欠的に鳴らす方式）
+	loopStart() {
+		if (!this.enabled || !this.ctx) return;
+		if (this._loopTimer) return; // 既にループ中
+		// 周期的に短いビープを鳴らす。フェーズパターンを用いて段階的な音にする。
+		const pattern = [880, 740, 660, 740];
+		let idx = 0;
+		const intervalMs = 100; // 少し間隔を広げる
+		this._loopTimer = setInterval(() => {
+			const f = pattern[idx % pattern.length];
+			idx++;
+			// さらに音量を下げて目立ちにくくする（全体の体感を抑える）
+			this._synthBeep(f, 0.06, 'square', this.volume * 0.18);
+		}, intervalMs);
+	}
+
+	// 回転中のループ音を停止
+	loopStop() {
+		if (this._loopTimer) {
+			clearInterval(this._loopTimer);
+			this._loopTimer = null;
+		}
+	}
+}
+
 
 /**
  * スロットゲーム全体を管理するクラス。
@@ -258,8 +392,11 @@ class SlotGame {
 	 * 注意: selectors への依存が強いため、element ベースのクエリへ段階的に移行するとテスタビリティが向上します。
 	 */
 	constructor(element, config) {
+		// ...existing code...
 		this.config = config;
 		this.ui = new UIManager(config); // UIManagerのインスタンスを生成
+		// サウンドマネージャを初期化（設定に基づく）
+		this.soundManager = new SoundManager(this.config);
 
 		// UIスケールを反映: CSSの --ui-scale を設定し、内部の symbolHeight をスケール
 		const uiScale = Number(this.config.uiScale) || 1;
@@ -323,6 +460,13 @@ class SlotGame {
 		this.buildReels();          // リール要素をHTMLに生成
 		this.setInitialPositions(); // 各リールを初期表示位置に設定
 		this.bindEvents();          // ボタンクリックなどのイベントを登録
+		// 勝利メッセージ要素を作成して body に追加（存在しない場合）
+		if (!document.getElementById('winMessage')) {
+			const wm = document.createElement('div');
+			wm.id = 'winMessage';
+			wm.innerHTML = `<span class="amount"></span><span class="sub">おめでとうございます!</span>`;
+			document.body.appendChild(wm);
+		}
 		// 配当表をレンダリング
 		this.renderPayoutTable();
 		// 賭け金入力の自動サイズ調整を初期化
@@ -719,10 +863,16 @@ class SlotGame {
 		this.currentBet = bet; // ラウンドごとの賭け金を保持
 		this.updateBalanceUI();
 
+		// サウンド: スピン開始
+		try { this.soundManager?.playSpinStart(); } catch (e) { /* ignore */ }
+
 		// 全てのリールに対して回転開始命令を出す
 		this.reels.forEach((reel, i) => {
 			this.startReel(i, speed);
 		});
+
+		// サウンド: 回転ループ開始
+		try { this.soundManager?.loopStart(); } catch (e) { }
 
 		if (this.isAutoMode) {
 			// 自動モードの場合: スタートボタンを一時的に無効化し、自動停止タイマーを設定
@@ -1142,6 +1292,12 @@ class SlotGame {
 					reel.element.style.transform = `translateY(${finalY}px)`;
 					reel.spinning = false;
 					reel.element.classList.remove('spinning'); // 回転中クラスを削除
+					// サウンド: リール停止
+					try { this.soundManager?.playReelStop(); } catch (e) { }
+					// 右端リール（最後のリール）が停止したタイミングで回転ループを停止する
+					try {
+						if (index === (this.reels.length - 1)) this.soundManager?.loopStop();
+					} catch (e) { }
 					this.checkAllStopped();
 				}
 			};
@@ -1215,6 +1371,8 @@ class SlotGame {
 		// 全てのリールが回転中でないことを確認
 		if (this.reels.every(r => !r.spinning)) {
 			this.isSpinning = false; // ゲーム全体が停止状態であることを示す
+			// サウンド: 回転ループ停止
+			try { this.soundManager?.loopStop(); } catch (e) { }
 			this.ui.setActionBtnText('▶ スタート'); // ボタンテキストを「スタート」に戻す
 			this.ui.setActionBtnDisabled(false); // ボタンを有効化
 
@@ -1230,9 +1388,13 @@ class SlotGame {
 					console.log(`Debt repaid: ¥${repay}, remaining debt=¥${this.debt}`);
 				}
 				if (payout > 0) {
+					// サウンド: 当たり
+					try { this.soundManager?.playWin(); } catch (e) { }
 					this.balance += payout;
 					this.updateBalanceUI();
 					console.log(`Win! payout=¥${payout}, new balance=¥${this.balance}`);
+					// 勝利メッセージを表示
+					try { this.showWinMessage(payout); } catch (e) { }
 				}
 			}
 		}
@@ -1307,6 +1469,29 @@ class SlotGame {
 	updateDebtUI() {
 		const el = document.getElementById('debt');
 		if (el) el.textContent = this.formatCurrency(this.debt);
+	}
+
+	/**
+	 * 画面中央に当たり金額を大きく表示する。
+	 * @param {number} amount - 支払われた金額（整数）
+	 * @param {number} [duration=2000] - 表示時間（ms）
+	 */
+	showWinMessage(amount, duration = 2000) {
+		const el = document.getElementById('winMessage');
+		if (!el) return;
+		const amt = el.querySelector('.amount');
+		if (amt) amt.textContent = `¥${this.formatCurrency(amount)}`;
+		el.classList.add('show');
+		// 前回のタイマーがあればクリア
+		if (this._winMsgTimer) clearTimeout(this._winMsgTimer);
+		this._winMsgTimer = setTimeout(() => this.hideWinMessage(), duration);
+	}
+
+	hideWinMessage() {
+		const el = document.getElementById('winMessage');
+		if (!el) return;
+		el.classList.remove('show');
+		if (this._winMsgTimer) { clearTimeout(this._winMsgTimer); this._winMsgTimer = null; }
 	}
 
 	/**
