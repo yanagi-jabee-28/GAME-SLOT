@@ -43,6 +43,95 @@ class UIManager {
 	}
 
 	/**
+	 * 近似: 現在の設定で「支払った掛け金より返ってくる確率」を計算します。
+	 * 方法（簡易）:
+	 * - 各ラインの配当倍率分布を作る（シンボルごとの一致確率と倍率から離散分布を生成）
+	 * - 単純化のためライン間を独立と仮定して畳み込みを行い、合計配当がベットを超える確率を近似算出
+	 * - forced（演出）は確率で1ラインを forced 配当に置換すると仮定して寄与を計算
+	 */
+	computeProbabilityReturnGreaterThanBet(bet) {
+		// ベース: 各ラインで得られる倍率の分布（mult 値に対する確率）
+		const symbols = Object.keys(this.payoutTable);
+		const perReelProb = this.reels.map(r => {
+			const counts = {};
+			for (const s of r.symbols) counts[s] = (counts[s] || 0) + 1;
+			const total = r.symbols.length;
+			const probs = {};
+			Object.keys(counts).forEach(k => probs[k] = counts[k] / total);
+			return probs;
+		});
+
+		// ライン毎の倍率PMF（マップ: multiplier -> probability）
+		const linePMF = new Map();
+		for (const sym of symbols) {
+			let p = 1;
+			for (let i = 0; i < this.reels.length; i++) p *= (perReelProb[i][sym] || 0);
+			const mult = Number(this.payoutTable[sym] || 0);
+			linePMF.set(mult, (linePMF.get(mult) || 0) + p);
+		}
+		// 確率合計が 1 にならない場合、残りは 0 倍（外れ）とする
+		const sumProb = Array.from(linePMF.values()).reduce((s, v) => s + v, 0);
+		if (sumProb < 0.999999) {
+			linePMF.set(0, (linePMF.get(0) || 0) + (1 - sumProb));
+		}
+
+		// ライン数
+		const horizontalLines = 3;
+		const diagonalLines = (this.reels.length === 3) ? 2 : 0;
+		const totalLines = horizontalLines + diagonalLines;
+
+		// 単純畳み込み: 各ラインを独立と仮定して totalLines 回畳み込む
+		// 配当は "倍率 * bet" なので、合計倍率が 1 を超えるかで判定
+		// PMF を配列で持ち、畳み込みを繰り返す
+		let totalPMF = new Map();
+		// 初期: 0倍で確率1
+		totalPMF.set(0, 1);
+		for (let L = 0; L < totalLines; L++) {
+			const next = new Map();
+			for (const [aMult, aP] of totalPMF.entries()) {
+				for (const [bMult, bP] of linePMF.entries()) {
+					const nm = aMult + bMult; // 加算: 各ラインの倍率を足す
+					next.set(nm, (next.get(nm) || 0) + aP * bP);
+				}
+			}
+			totalPMF = next;
+		}
+
+		// forced の寄与: 簡易に、演出が発生した場合は1ラインを forcedMult に置換すると近似
+		const evInfo = this.computeExpectedValuePerUnit();
+		const forcedMult = evInfo.forcedExpectedMult || 0;
+		const horizP = evInfo.horizP || 0;
+		const diagP = evInfo.diagP || 0;
+		const sumP = Math.min(1, horizP + diagP);
+
+		// 元の totalPMF は自然状態の分布。演出が起きる確率 sumP に対して1ラインを forcedMult に置換する処理を近似的に適用する。
+		// 実装簡易化のため、以下を行う:
+		// - 演出なし: 確率 (1 - sumP) * totalPMF
+		// - 演出あり: 確率 sumP * Q で、Q は "任意の1ラインを forcedMult に置換した場合の合計分布" の近似
+		// Q の近似: 任意の1ライン分だけ自然分布から forcedMult に差し替える（平均的に1ライン分を入れ替える）
+
+		// Q を作る: 各 natural total 値 t に対して、t' = t - E[natural one-line mult] + forcedMult
+		const naturalOneLineMean = evInfo.perLineExpectedMult || 0;
+		const adjustedPMF = new Map();
+		for (const [totalMult, p] of totalPMF.entries()) {
+			const adj = Math.max(0, totalMult - naturalOneLineMean + forcedMult);
+			adjustedPMF.set(adj, (adjustedPMF.get(adj) || 0) + p);
+		}
+
+		// 合成分布: (1 - sumP)*totalPMF + sumP*adjustedPMF
+		const finalPMF = new Map();
+		for (const [m, p] of totalPMF.entries()) finalPMF.set(m, (finalPMF.get(m) || 0) + p * (1 - sumP));
+		for (const [m, p] of adjustedPMF.entries()) finalPMF.set(m, (finalPMF.get(m) || 0) + p * sumP);
+
+		// 最終的に "合計倍率 > 1" の確率を計算
+		let prob = 0;
+		for (const [m, p] of finalPMF.entries()) {
+			if (m > 1 - 1e-12) prob += p; // float tolerance
+		}
+		return prob;
+	}
+
+	/**
 	 * 必要なDOM要素を取得し、内部プロパティに格納します。
 	 */
 	getElements() {
@@ -238,6 +327,16 @@ class SlotGame {
 		this.renderPayoutTable();
 		// 賭け金入力の自動サイズ調整を初期化
 		this.initBetInputAutoSize();
+		// 開発者モードパネルを準備（表示はトグル可能）
+		this.renderDevPanel();
+		// Ctrl+D で開発者パネル表示/非表示を切り替え
+		document.addEventListener('keydown', (e) => {
+			if (e.ctrlKey && e.key.toLowerCase() === 'd') {
+				e.preventDefault();
+				const p = document.getElementById('devPanel');
+				if (p) p.style.display = (p.style.display === 'none') ? 'block' : 'none';
+			}
+		});
 	}
 
 	/** 賭け金入力の幅を値の桁数に合わせて伸縮させる */
@@ -251,6 +350,8 @@ class SlotGame {
 			el.style.width = `${w}px`;
 		};
 		el.addEventListener('input', resize);
+		// bet が変わったら開発者パネルを更新
+		el.addEventListener('input', () => this.updateDevPanel());
 		// 初期サイズ
 		resize();
 	}
@@ -277,6 +378,178 @@ class SlotGame {
 			table.appendChild(row);
 		}
 		container.appendChild(table);
+	}
+
+
+	/**
+	 * --- 開発者モード: 期待値計算と表示パネル ---
+	 * 以下は開発者モード用の簡易ツールです。
+	 * - 期待値は「1ベットあたりの期待配当倍率」を計算します（配当はラインごとに加算される現在の仕様に準拠）。
+	 * - 計算は現行のリールシンボル分布（reelsData）と this.payoutTable を用いて行います。
+	 * - 表示はトグルで開閉可能。開発中に自由に表示/非表示できます。
+	 */
+
+	computeExpectedValuePerUnit() {
+		// 各リールごとのシンボル確率を算出（固定停止位置が一様であるという前提）
+		const perReelProb = this.reels.map(r => {
+			const counts = {};
+			for (const s of r.symbols) counts[s] = (counts[s] || 0) + 1;
+			const total = r.symbols.length;
+			const probs = {};
+			Object.keys(counts).forEach(k => probs[k] = counts[k] / total);
+			return probs;
+		});
+
+		// ラインあたりの期待倍率 = sum_over_symbols( product_over_reels P_r(symbol) * multiplier(symbol) )
+		const symbols = Object.keys(this.payoutTable);
+		let perLineExpectedMult = 0;
+		for (const sym of symbols) {
+			let p = 1;
+			for (let i = 0; i < this.reels.length; i++) {
+				p *= (perReelProb[i][sym] || 0);
+			}
+			const mult = Number(this.payoutTable[sym] || 0);
+			perLineExpectedMult += p * mult;
+		}
+
+		// ライン数: 水平3行 + (3リール時のみ斜め2行)
+		const horizontalLines = 3;
+		const diagonalLines = (this.reels.length === 3) ? 2 : 0;
+		const totalLines = horizontalLines + diagonalLines;
+
+		// 自然発生による1ベットあたりの期待倍率（全ライン合算）
+		const evNaturalPerUnit = totalLines * perLineExpectedMult;
+
+		// --- forced（演出）による期待倍率 ---
+		// chooseSymbolByProbability と同じロジックで、全リールに存在する候補のみを考慮した重み分布を作る
+		const weights = this.config.winSymbolWeights || {};
+		const commonSymbols = this.reels.reduce((acc, r) => acc.filter(sym => r.symbols.includes(sym)), Object.keys(weights));
+		const filtered = commonSymbols.filter(sym => (weights[sym] || 0) > 0);
+		let forcedExpectedMult = 0;
+		if (filtered.length > 0) {
+			const totalW = filtered.reduce((s, sym) => s + weights[sym], 0);
+			for (const sym of filtered) {
+				const pSym = weights[sym] / totalW;
+				forcedExpectedMult += pSym * (Number(this.payoutTable[sym] || 0));
+			}
+		}
+
+		// 演出確率
+		const horizP = Math.max(0, Math.min(1, Number(this.config.winHorizontalProbability) || 0));
+		const diagP = Math.max(0, Math.min(1, Number(this.config.winDiagonalProbability) || 0));
+		const sumP = Math.min(1, horizP + diagP);
+
+		// 合成: 演出が起きた場合は forced により1ライン分（簡易仮定）の配当が得られるものとする。
+		// EV_total_per_unit = (1 - sumP) * evNaturalPerUnit + horizP * forcedExpectedMult + diagP * forcedExpectedMult
+		const evTotalPerUnit = (1 - sumP) * evNaturalPerUnit + (horizP + diagP) * forcedExpectedMult;
+
+		return { evPerUnit: evTotalPerUnit, evNaturalPerUnit, forcedExpectedMult, perLineExpectedMult, totalLines, horizP, diagP };
+	}
+
+	/**
+	 * 開発者パネルを描画します（トグルで表示/非表示）。
+	 */
+	renderDevPanel() {
+		// 既に存在する場合は更新のみ
+		let panel = document.getElementById('devPanel');
+		if (!panel) {
+			panel = document.createElement('div');
+			panel.id = 'devPanel';
+			panel.style.position = 'fixed';
+			panel.style.right = '12px';
+			panel.style.bottom = '12px';
+			panel.style.background = 'rgba(0,0,0,0.8)';
+			panel.style.color = 'white';
+			panel.style.padding = '10px';
+			panel.style.borderRadius = '8px';
+			panel.style.fontSize = '13px';
+			panel.style.zIndex = 9999;
+			panel.style.maxWidth = '320px';
+			panel.style.boxShadow = '0 6px 18px rgba(0,0,0,0.6)';
+			// header
+			const hdr = document.createElement('div');
+			hdr.style.display = 'flex';
+			hdr.style.justifyContent = 'space-between';
+			hdr.style.alignItems = 'center';
+			hdr.style.marginBottom = '8px';
+			hdr.innerHTML = '<strong style="font-size:14px">開発者パネル：期待値</strong>';
+			// close button
+			const btn = document.createElement('button');
+			btn.textContent = '×';
+			btn.title = '開発者パネルを閉じる';
+			btn.style.marginLeft = '8px';
+			btn.style.cursor = 'pointer';
+			btn.addEventListener('click', () => panel.style.display = 'none');
+			hdr.appendChild(btn);
+			panel.appendChild(hdr);
+			// content
+			const content = document.createElement('div');
+			content.id = 'devPanelContent';
+			panel.appendChild(content);
+			document.body.appendChild(panel);
+		}
+		this.updateDevPanel();
+	}
+
+	updateDevPanel() {
+		const content = document.getElementById('devPanelContent');
+		if (!content) return;
+		const betInput = document.getElementById('betInput');
+		const bet = Math.max(Number(betInput?.value) || this.config.minBet, this.config.minBet);
+
+		const ev = this.computeExpectedValuePerUnit();
+		const evForBet = ev.evPerUnit * bet;
+		const roi = (ev.evPerUnit - 1) * 100; // % return over bet (approx)
+
+		content.innerHTML = '';
+
+		const title = document.createElement('div');
+		title.style.fontWeight = '600';
+		title.style.marginBottom = '6px';
+		title.textContent = '期待値内訳（1ベットあたり）';
+		content.appendChild(title);
+
+		const total = document.createElement('div');
+		total.textContent = `合計期待倍率（1ベットあたり）: ${ev.evPerUnit.toFixed(6)}`;
+		content.appendChild(total);
+
+		const natural = document.createElement('div');
+		natural.textContent = `自然発生期待倍率（全ライン合算）: ${ev.evNaturalPerUnit.toFixed(6)}`;
+		content.appendChild(natural);
+
+		const forced = document.createElement('div');
+		forced.textContent = `演出時の期待倍率（1行あたり）: ${ev.forcedExpectedMult.toFixed(4)}`;
+		content.appendChild(forced);
+
+		const probs = document.createElement('div');
+		probs.textContent = `演出確率: 合計=${(ev.horizP + ev.diagP).toFixed(4)} (水平:${ev.horizP.toFixed(3)}, 斜め:${ev.diagP.toFixed(3)})`;
+		content.appendChild(probs);
+
+		const lines = document.createElement('div');
+		lines.textContent = `考慮されたライン数: ${ev.totalLines} (ラインごとの自然期待倍率: ${ev.perLineExpectedMult.toFixed(6)})`;
+		content.appendChild(lines);
+
+		const evBetLine = document.createElement('div');
+		evBetLine.style.marginTop = '6px';
+		evBetLine.textContent = `現在の掛け金 (${bet}) に対する期待返還: ${evForBet.toFixed(2)}`;
+		content.appendChild(evBetLine);
+
+		const roiLine = document.createElement('div');
+		roiLine.textContent = `概算 ROI: ${roi.toFixed(2)}%`;
+		content.appendChild(roiLine);
+
+		// 掛け金より多く返ってくる確率（近似）を表示
+		const prob = this.computeProbabilityReturnGreaterThanBet(bet);
+		const probLine = document.createElement('div');
+		probLine.style.marginTop = '6px';
+		probLine.textContent = `Prob(return > bet): ${(prob * 100).toFixed(2)}%`;
+		content.appendChild(probLine);
+
+		const refresh = document.createElement('button');
+		refresh.textContent = '更新';
+		refresh.style.marginTop = '8px';
+		refresh.addEventListener('click', () => this.updateDevPanel());
+		content.appendChild(refresh);
 	}
 
 	/**
