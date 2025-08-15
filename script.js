@@ -172,6 +172,16 @@ class SlotGame {
 		this.config = config;
 		this.ui = new UIManager(config); // UIManagerのインスタンスを生成
 
+		// UIスケールを反映: CSSの --ui-scale を設定し、内部の symbolHeight をスケール
+		const uiScale = Number(this.config.uiScale) || 1;
+		try {
+			document.documentElement.style.setProperty('--ui-scale', String(uiScale));
+		} catch (e) {
+			// サーバサイド等で document が存在しない場合は無視
+		}
+		// 内部計算で使う symbolHeight をスケール（元の設定値は config.symbolHeight が基準）
+		this.config.symbolHeight = Math.round((this.config.symbolHeight || 120) * uiScale);
+
 		// --- ファイナンス状態 ---
 		this.balance = Number(config.initialBalance) || 0; // プレイヤーの所持金
 		// 借金状態: debt は利息を含めた現時点での返済総額を表す
@@ -226,6 +236,23 @@ class SlotGame {
 		this.bindEvents();          // ボタンクリックなどのイベントを登録
 		// 配当表をレンダリング
 		this.renderPayoutTable();
+		// 賭け金入力の自動サイズ調整を初期化
+		this.initBetInputAutoSize();
+	}
+
+	/** 賭け金入力の幅を値の桁数に合わせて伸縮させる */
+	initBetInputAutoSize() {
+		const el = document.getElementById('betInput');
+		if (!el) return;
+		const resize = () => {
+			const len = String(el.value || el.placeholder || '').length;
+			// 最小幅 72px、1桁ごとに12px増加
+			const w = Math.max(72, 72 + (len - 1) * 12);
+			el.style.width = `${w}px`;
+		};
+		el.addEventListener('input', resize);
+		// 初期サイズ
+		resize();
 	}
 
 	/**
@@ -998,7 +1025,7 @@ class SlotGame {
 	 */
 	updateBalanceUI() {
 		const el = document.getElementById('balance');
-		if (el) el.textContent = String(this.balance);
+		if (el) el.textContent = this.formatCurrency(this.balance);
 	}
 
 	/**
@@ -1006,7 +1033,17 @@ class SlotGame {
 	 */
 	updateDebtUI() {
 		const el = document.getElementById('debt');
-		if (el) el.textContent = String(this.debt);
+		if (el) el.textContent = this.formatCurrency(this.debt);
+	}
+
+	/**
+	 * 数値を通貨形式（カンマ区切り）に整形します（整数向け）。
+	 * @param {number} n
+	 * @returns {string}
+	 */
+	formatCurrency(n) {
+		const v = Number(n) || 0;
+		return v.toLocaleString();
 	}
 
 	/**

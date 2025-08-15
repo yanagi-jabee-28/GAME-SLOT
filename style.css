@@ -24,6 +24,12 @@
 	/* ボタンの文字色 */
 	--button-hover-background-color: #ddd;
 	/* ボタンホバー時の背景色 */
+	/* UIスケール: JSから --ui-scale を設定して全体を拡大/縮小できます */
+	--ui-scale: 1;
+
+	/* 基礎サイズ（px）: JSのconfig.symbolHeight と一致させること */
+	--base-symbol-height: 120px;
+	--base-reel-width: 120px;
 }
 
 /* body: ページ全体の基本的なスタイルを設定します */
@@ -59,11 +65,12 @@ body {
 }
 
 /* .reel: 個々のリール（シンボルが回転する列） */
+
 .reel {
-	width: 80px;
-	/* リールの幅 */
-	height: 240px;
-	/* リールの高さ。シンボル3つ分 */
+	width: calc(var(--base-reel-width) * var(--ui-scale));
+	/* リールの幅（スケーラブル） */
+	height: calc(var(--base-symbol-height) * 3 * var(--ui-scale));
+	/* リールの高さ。シンボル3つ分（symbolHeight * 3） */
 	overflow: hidden;
 	/* リールからはみ出たシンボルを非表示にする */
 	border: 2px solid var(--reel-border-color);
@@ -79,35 +86,50 @@ body {
 /* .symbols: シンボル全体を縦に並べて保持するコンテナ */
 .symbols {
 	position: absolute;
-	/* 親要素(.reel)を基準に絶対位置で配置 */
 	top: 0;
-	/* 親要素の上端に配置 */
 	left: 0;
-	/* 親要素の左端に配置 */
 	right: 0;
-	/* 親要素の右端まで幅を広げる */
 	/* transformプロパティの変更をブラウザに予告し、アニメーションの描画を最適化させます */
 	will-change: transform;
 }
 
 /* .symbol: 個々のシンボル（絵文字） */
+
 .symbol {
-	height: 80px;
-	/* 各シンボルの高さ。リールの高さの1/3 */
-	font-size: 50px;
-	/* 絵文字のフォントサイズ */
-	line-height: 80px;
+	height: calc(var(--base-symbol-height) * var(--ui-scale));
+	/* 各シンボルの高さ（スケーラブル）。リールの高さの1/3 */
+	font-size: calc(80px * var(--ui-scale));
+	/* 絵文字のフォントサイズ（スケーラブル） */
+	line-height: calc(var(--base-symbol-height) * var(--ui-scale));
 	/* 高さとline-heightを合わせ、絵文字を垂直中央に配置 */
 	user-select: none;
 	/* ユーザーによるテキスト選択を無効化 */
+	box-sizing: border-box;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	overflow: hidden;
+	white-space: nowrap;
+	text-align: center;
 }
 
 /* .symbol.bar: BARシンボルにのみ適用する特別なスタイル */
 .symbol.bar {
-	font-size: 40px;
-	/* 他の絵文字との見た目のバランスを取るため、フォントサイズを少し小さく調整 */
-	font-weight: bold;
-	/* 視認性を高めるために太字に設定 */
+	/* BAR シンボルは絵文字サイズとは別に幅広で見せたいが、少しだけ小さくしてリールに収める */
+	font-size: calc(56px * var(--ui-scale));
+	font-weight: 800;
+	letter-spacing: 0.5px;
+	/* line-height を基礎のシンボル高さに合わせることで縦中央に調整 */
+	line-height: calc(var(--base-symbol-height) * var(--ui-scale));
+	/* BAR がリール幅を超えてはみ出すのを防ぐ */
+	max-width: 100%;
+	box-sizing: border-box;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	/* 横余白をわずかに与えてトリミング位置を安定させる */
+	padding: 0 6px;
 }
 
 /* .controls: 操作ボタン全体をまとめるコンテナ */
@@ -174,23 +196,28 @@ button:disabled {
 
 .finance .badge {
 	display: inline-block;
-	padding: 6px 10px;
-	border-radius: 8px;
+	padding: 8px 12px;
+	border-radius: 10px;
 	background: var(--container-background-color);
 	border: 1px solid var(--container-border-color);
 	color: var(--text-color);
-	font-weight: 600;
-	min-width: 64px;
+	font-weight: 700;
+	min-width: 88px;
 	text-align: center;
+	font-size: 18px;
 }
 
-#balance.badge-positive {
+
+#balance {
 	color: #ffd166;
+	font-weight: 800;
+	font-size: 20px;
 }
 
 #debt {
-	color: #ff8b94;
-	font-weight: 700;
+	color: #ff6b6b;
+	font-weight: 800;
+	font-size: 20px;
 }
 
 /* 配当表 */
