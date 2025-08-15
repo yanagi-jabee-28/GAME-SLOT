@@ -45,18 +45,6 @@
             <button class="stop-btn" id="stopBtn2" title="右リールを止める (3)" aria-label="右リールを止める">3</button>
       </div>
 
-      <!-- 配当表表示エリア -->
-      <div class="payout-area" style="margin-top:16px;">
-            <h3>配当表</h3>
-            <div id="payoutTable">(読み込み中...)</div>
-      </div>
-
-      <!-- 
-      改行タグ: 現在はレイアウトの調整のために使用されていますが、
-      将来的にはCSSのmarginやpaddingで余白を調整する方法がより推奨されます。
-    -->
-      <br>
-
       <!-- ゲームの操作ボタンをまとめるコンテナ -->
       <div class="controls">
             <div class="controls-top">
@@ -75,6 +63,12 @@
                         <span style="margin-left:12px;">借金: ¥<span id="debt" class="badge">0</span></span>
                   </div>
             </div>
+      </div>
+
+      <!-- 配当表表示エリア（ページ下部へ移動） -->
+      <div class="payout-area" style="margin-top:16px;">
+            <h3>配当表</h3>
+            <div id="payoutTable">(読み込み中...)</div>
       </div>
 
       <!-- 
