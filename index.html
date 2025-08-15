@@ -26,11 +26,8 @@
       注意: id="slot-machine" は script.js 内でリールを配置する基準点として使用されています。
             このidを変更する場合は、script.js内の関連する記述も必ず修正してください。
     -->
-      <div class="slot-container">
-            <div id="slot-machine">
-                  <!-- リールはJavaScript (script.js) によって、このコメント部分に動的に追加されます -->
-            </div>
-            <canvas id="lever-canvas"></canvas>
+      <div class="slot-container" id="slot-machine">
+            <!-- リールはJavaScript (script.js) によって、このコメント部分に動的に追加されます -->
       </div>
 
       <!-- 配当表表示エリア -->
@@ -39,16 +36,20 @@
             <div id="payoutTable">(読み込み中...)</div>
       </div>
 
+      <!-- 
+      改行タグ: 現在はレイアウトの調整のために使用されていますが、
+      将来的にはCSSのmarginやpaddingで余白を調整する方法がより推奨されます。
+    -->
       <br>
 
       <!-- ゲームの操作ボタンをまとめるコンテナ -->
       <div class="controls">
             <div class="controls-top">
-                  <!-- スタートボタン（中央） -->
+                  <!-- 上段: スタートボタン（中央に独立配置） -->
                   <button id="actionBtn">▶ スタート</button>
             </div>
             <div class="controls-bottom">
-                  <!-- モード切替ボタン -->
+                  <!-- 下段: その他の操作群 -->
                   <button id="modeBtn">モード: 自動</button>
 
                   <!-- 賭け金入力と残高表示 -->
@@ -60,12 +61,17 @@
                   </div>
             </div>
       </div>
-      <!--
+
+      <!-- 
+      外部JavaScriptファイルの読み込み:
+      defer属性は、HTMLの解析完了後にスクリプトを実行させるための重要な属性です。
+      これにより、ページの表示速度が向上します。
+
       重要: スクリプトの読み込み順序は非常に重要です。
-      config.js には script.js が依存する設定値が定義されているため、
-      必ず config.js を先に読み込む必要があります。
-      この順序を変更すると、ゲームが正常に動作しなくなる可能性があります。
-      -->
+            config.js には script.js が依存する設定値が定義されているため、
+            必ず config.js を先に読み込む必要があります。
+            この順序を変更すると、ゲームが正常に動作しなくなる可能性があります。
+    -->
       <!-- config.js: ゲームの基本設定（リールの絵柄、速度など）を定義します -->
       <script src="config.js" defer></script>
       <!-- script.js: ゲームのメインロジック（開始、停止、モード切替など）を制御します -->

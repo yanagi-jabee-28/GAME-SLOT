@@ -62,39 +62,7 @@ body {
 	/* 上下の余白と、左右の自動中央配置 */
 	border-radius: 10px;
 	/* 角を丸くして柔らかい印象に */
-	position: relative;
 }
-
-/* The inner slot machine area that receives .reel elements should
-   arrange them horizontally. Previously reels were appended into
-   #slot-machine but that element had no layout style, causing
-   reels to stack vertically. Make it a flex row. */
-#slot-machine {
-	display: inline-flex;
-	flex-direction: row;
-	align-items: flex-start;
-	gap: 8px;
-}
-
-#lever-canvas {
-	width: 280px;
-	/* match canvas width (script.js sets canvas.width = 280) */
-	height: 480px;
-	/* match canvas height (script.js sets canvas.height = 480) */
-	position: absolute;
-	/* offset adjusted to keep knob visible near the machine */
-	right: -200px;
-	top: 50%;
-	transform: translateY(-50%);
-	cursor: pointer;
-	z-index: 1;
-	/* keep canvas interactive but behind controls which will have higher z-index */
-	/* quick fix: allow clicks to pass through canvas so controls remain clickable; */
-	pointer-events: auto;
-
-}
-
-/* .reel: 個々のリール（シンボルが回転する列） */
 
 /* .reel: 個々のリール（シンボルが回転する列） */
 
@@ -175,10 +143,6 @@ body {
 	align-items: center;
 	justify-content: center;
 	gap: 12px;
-	position: relative;
-	z-index: 10001;
-	/* ensure controls (buttons) appear above the lever canvas so they remain clickable */
-	pointer-events: auto;
 }
 
 /* スタートボタンは上段でセンタリングし、スロット本体の中心線と揃うようにする */
@@ -207,13 +171,6 @@ body {
 	/* 文字サイズをやや縮小 */
 	margin: 8px auto;
 	/* 中央寄せで上下の余白を調整 */
-}
-
-/* Ensure the main action button is definitely above the lever canvas */
-#actionBtn {
-	position: relative;
-	z-index: 10002;
-	pointer-events: auto;
 }
 
 /* 他のコントロールは2列目以降に並ぶ */

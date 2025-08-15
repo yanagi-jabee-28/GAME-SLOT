@@ -12,7 +12,7 @@ const gameConfig = {
 	//       script.js側での変更は不要です。
 	selectors: {
 		slotMachine: '#slot-machine', // スロットマシン本体のコンテナdiv
-		leverCanvas: '#lever-canvas',   // レバー描画用のcanvas
+		actionBtn: '#actionBtn',       // 「スタート/ストップ」ボタン
 		modeBtn: '#modeBtn',         // 「モード切替」ボタン
 	},
 
@@ -23,22 +23,6 @@ const gameConfig = {
 	// 例: 1.2 は 120% サイズ、0.8 は 80% サイズ
 	uiScale: 1,
 	symbolDuplicationFactor: 2, // 無限スクロールを滑らかに見せるため、リール内のシンボルを何周分複製するか。値を大きくするとメモリ使用量が増えます。
-
-	// --- レバー設定 ---
-	lever: {
-		stickColor: '#cccccc',
-		stickWidth: 10,
-		knobColor: '#ff4141',
-		knobRadius: 20,
-		baseColor: '#333333',
-		baseRadius: 30,
-		pivotY: 150, // レバーの回転軸のY座標
-		stickLength: 120, // 棒の長さ
-		// レバーを90度傾ける調整: 元の角度に +PI/2 を加算して表示上90度回転させる
-		initialAngle: Math.PI / 3, // -Math.PI/6 + Math.PI/2 = Math.PI/3 (約+60deg)
-		pullAngle: (3 * Math.PI) / 4, // Math.PI/4 + Math.PI/2 = 3PI/4 (約135deg)
-		animationDuration: 200, // レバーを引くアニメーションの時間 (ms)
-	},
 
 	// --- リールのシンボル構成 ---
 	// 注意: 各リールに表示されるシンボルの配列です。

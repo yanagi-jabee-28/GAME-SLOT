@@ -8,10 +8,9 @@
  * 設計概要 / アーキテクチャ
  * - 役割分担:
  *   - UIManager: DOM参照とUI更新（テキスト変更、transform適用）に限定。副作用の集中管理を行います。
- *   - Lever: レバーの描画、アニメーション、インタラクションを管理します。
  *   - SlotGame: ゲーム状態・アニメーション・制御ロジックを保持。DOM操作は UIManager 経由に限定します。
  * - 主要設定（抜粋）:
- *   - selectors: { slotMachine, leverCanvas, modeBtn }
+ *   - selectors: { slotMachine, actionBtn, modeBtn }
  *   - reelsData: string[][]（各リールのシンボル配列）。インデックス順は停止計算・演出の基準です。
  *   - symbolHeight: number（px）。CSSのシンボル高さと一致必須。
  *   - 自動停止: autoStopMinTime/autoStopMaxTime と minSequentialStopGapMs による等間隔+ジッター生成。
@@ -69,7 +68,7 @@ class UIManager {
 	 */
 	getElements() {
 		this.elements.slotContainer = document.querySelector(this.config.selectors.slotMachine);
-		this.elements.leverCanvas = document.querySelector(this.config.selectors.leverCanvas);
+		this.elements.actionBtn = document.querySelector(this.config.selectors.actionBtn);
 		this.elements.modeBtn = document.querySelector(this.config.selectors.modeBtn);
 	}
 
@@ -138,6 +137,22 @@ class UIManager {
 	 */
 
 	/**
+	 * アクションボタンのテキストを設定します。
+	 * @param {string} text - 設定するテキスト
+	 */
+	setActionBtnText(text) {
+		this.elements.actionBtn.textContent = text;
+	}
+
+	/**
+	 * アクションボタンのdisabledプロパティを設定します。
+	 * @param {boolean} disabled - trueの場合ボタンを無効化、falseの場合有効化
+	 */
+	setActionBtnDisabled(disabled) {
+		this.elements.actionBtn.disabled = disabled;
+	}
+
+	/**
 	 * モードボタンのテキストを設定します。
 	 * @param {string} text - 設定するテキスト
 	 */
@@ -157,115 +172,6 @@ class UIManager {
 		return matrix.m42;
 	}
 }
-
-/**
- * レバーの描画とアニメーションを管理するクラス
- */
-class Lever {
-	constructor(canvas, config, slotGame) {
-		this.canvas = canvas;
-		this.ctx = this.canvas.getContext('2d');
-		this.config = config.lever;
-		this.slotGame = slotGame;
-		this.angle = this.config.initialAngle;
-		this.isAnimating = false;
-
-		this.canvas.width = 100;
-		// increase canvas resolution to avoid clipping the knob when lever is rotated/translated
-		// increase canvas resolution to avoid clipping the knob when lever is rotated/translated
-		this.canvas.width = 280;
-		this.canvas.height = 480;
-
-		this.draw();
-		this.bindEvents();
-	}
-
-	draw() {
-		this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-		const pivotX = this.canvas.width / 2;
-		const pivotY = this.config.pivotY;
-
-		// ベースを描画
-		this.ctx.fillStyle = this.config.baseColor;
-		this.ctx.beginPath();
-		this.ctx.arc(pivotX, pivotY, this.config.baseRadius, 0, Math.PI * 2);
-		this.ctx.fill();
-
-		// 棒を描画
-		const stickEndX = pivotX + this.config.stickLength * Math.sin(this.angle);
-		// Flip vertically: invert the Y offset so the lever is mirrored vertically around pivotY
-		const stickEndY = pivotY - this.config.stickLength * Math.cos(this.angle);
-		this.ctx.strokeStyle = this.config.stickColor;
-		this.ctx.lineWidth = this.config.stickWidth;
-		this.ctx.lineCap = 'round';
-		this.ctx.beginPath();
-		this.ctx.moveTo(pivotX, pivotY);
-		this.ctx.lineTo(stickEndX, stickEndY);
-		this.ctx.stroke();
-
-		// ノブを描画: 正確に棒の末端に描画する（ズレを防止）
-		this.ctx.fillStyle = this.config.knobColor;
-		this.ctx.beginPath();
-		this.ctx.arc(stickEndX, stickEndY, this.config.knobRadius, 0, Math.PI * 2);
-		this.ctx.fill();
-	}
-
-	bindEvents() {
-		this.canvas.addEventListener('click', () => this.pull());
-	}
-
-	pull() {
-		if (this.isAnimating || this.slotGame.isSpinning) return;
-
-		this.isAnimating = true;
-		const startAngle = this.config.initialAngle;
-		const endAngle = this.config.pullAngle;
-		const duration = this.config.animationDuration;
-		const startTime = performance.now();
-
-		const animate = (currentTime) => {
-			const elapsedTime = currentTime - startTime;
-			const progress = Math.min(elapsedTime / duration, 1);
-
-			this.angle = startAngle + (endAngle - startAngle) * progress;
-			this.draw();
-
-			if (progress < 1) {
-				requestAnimationFrame(animate);
-			} else {
-				this.slotGame.startGame();
-				this.reset();
-			}
-		};
-
-		requestAnimationFrame(animate);
-	}
-
-	reset() {
-		const startAngle = this.config.pullAngle;
-		const endAngle = this.config.initialAngle;
-		const duration = this.config.animationDuration;
-		const startTime = performance.now();
-
-		const animate = (currentTime) => {
-			const elapsedTime = currentTime - startTime;
-			const progress = Math.min(elapsedTime / duration, 1);
-
-			this.angle = startAngle + (endAngle - startAngle) * progress;
-			this.draw();
-
-			if (progress < 1) {
-				requestAnimationFrame(animate);
-			} else {
-				this.isAnimating = false;
-			}
-		};
-
-		requestAnimationFrame(animate);
-	}
-}
-
 
 /**
  * SoundManager: WebAudio を使ってサウンドを管理します。
@@ -317,14 +223,14 @@ class SoundManager {
 		src.start();
 	}
 
-	splaySpinStart() {
+	playSpinStart() {
 		if (!this.enabled) return;
 		if (this.buffers.spinStart) return this._playBuffer(this.buffers.spinStart);
 		// 合成: 低周波の短いノイズ的なサウンド
 		this._synthBeep(120, 0.12, 'sine');
 	}
 
-	splayReelStop() {
+	playReelStop() {
 		if (!this.enabled) return;
 		if (this.buffers.reelStop) return this._playBuffer(this.buffers.reelStop);
 		// 停止音は目立たせるため、ループ音より大きめに再生する
@@ -332,7 +238,7 @@ class SoundManager {
 		this._synthBeep(800, 0.08, 'square', vol);
 	}
 
-	splayWin() {
+	playWin() {
 		if (!this.enabled) return;
 		if (this.buffers.win) return this._playBuffer(this.buffers.win);
 		// 合成: 上昇トーンのメロディ風
@@ -376,24 +282,6 @@ class SoundManager {
 		}
 	}
 
-	/*
-	 * Backwards-compatible play* wrappers
-	 * Some code calls playSpinStart/playReelStop/playWin while internal methods were named splay*.
-	 * Provide thin wrappers so both call sites work.
-	 */
-
-	playSpinStart() {
-		if (typeof this.splaySpinStart === 'function') return this.splaySpinStart();
-	}
-
-	playReelStop() {
-		if (typeof this.splayReelStop === 'function') return this.splayReelStop();
-	}
-
-	playWin() {
-		if (typeof this.splayWin === 'function') return this.splayWin();
-	}
-
 	// 回転中のループ音（ピコピコ音）を開始（短いビープを間欠的に鳴らす方式）
 	loopStart() {
 		if (!this.enabled || !this.ctx) return;
@@ -428,7 +316,7 @@ class SlotGame {
 	/**
 	 * SlotGameクラスのコンストラクタ。
 	 * ゲームの初期設定とDOM要素の紐付けを行います。
-	 * @param {HTMLElement} element - スロットマシンのコンテナとなるHTML要素（例: <div id="slot-machine">
+	 * @param {HTMLElement} element - スロットマシンのコンテナとなるHTML要素（例: <div id="slot-machine">）
 	 * @param {object} config - ゲームの動作を定義する設定オブジェクト
 	 * 契約:
 	 * - 入力: element は現状未使用（将来の複数インスタンス・スコープ分離で利用予定）。
@@ -439,7 +327,6 @@ class SlotGame {
 		// ...existing code...
 		this.config = config;
 		this.ui = new UIManager(config); // UIManagerのインスタンスを生成
-		this.lever = new Lever(this.ui.elements.leverCanvas, config, this);
 
 		// グローバル参照を設定して UIManager から委譲できるようにする
 		try { window.activeSlotGame = this; } catch (e) { /* ignore */ }
@@ -487,6 +374,7 @@ class SlotGame {
 
 		// --- DOM要素の参照を保持 ---
 		this.slotContainer = this.ui.elements.slotContainer; // スロットリールを格納するコンテナ
+		this.actionBtn = this.ui.elements.actionBtn; // スタート/ストップボタン
 		this.modeBtn = this.ui.elements.modeBtn;     // モード切り替えボタン
 
 		// --- ゲームの状態管理変数 ---
@@ -643,7 +531,7 @@ class SlotGame {
 			perLineExpectedMult += p * mult;
 		}
 
-		//ライン数: 水平3行 + (3リール時のみ斜め2行)
+		// ライン数: 水平3行 + (3リール時のみ斜め2行)
 		const horizontalLines = 3;
 		const diagonalLines = (this.reels.length === 3) ? 2 : 0;
 		const totalLines = horizontalLines + diagonalLines;
@@ -887,8 +775,7 @@ class SlotGame {
 				symbols: reelSymbols,    // このリールに表示されるシンボルデータ
 				spinning: false,         // このリールが回転中かどうかのフラグ
 				animationFrameId: null,  // requestAnimationFrameのID (アニメーション停止時に使用)
-				// totalHeight must reflect the actual DOM children height (we duplicate symbols)
-				totalHeight: reelSymbols.length * (this.config.symbolDuplicationFactor || 1) * this.config.symbolHeight // シンボル2周分の全高
+				totalHeight: reelSymbols.length * this.config.symbolHeight // シンボル2周分の全高
 			});
 		}
 	}
@@ -932,18 +819,10 @@ class SlotGame {
 	 * ゲームの操作ボタンにイベントリスナーを設定します。
 	 */
 	bindEvents() {
+		// スタート/ストップボタンがクリックされたらhandleActionメソッドを実行
+		this.ui.elements.actionBtn.addEventListener('click', () => this.handleAction());
 		// モード切り替えボタンがクリックされたらtoggleModeメソッドを実行
 		this.ui.elements.modeBtn.addEventListener('click', () => this.toggleMode());
-
-		// スタート/停止ボタンをクリックでトグルできるようにバインド
-		// (存在チェックを行い、将来のセレクタ変更に耐性を持たせる)
-		const actionBtn = document.getElementById('actionBtn');
-		if (actionBtn) {
-			actionBtn.addEventListener('click', (e) => {
-				e.preventDefault();
-				this.handleAction();
-			});
-		}
 
 		// キーボード: スペースキーでスタート/停止をトグル
 		document.addEventListener('keydown', (e) => {
@@ -969,7 +848,7 @@ class SlotGame {
 		if (this.isSpinning) {
 			this.stopManual(); // 回転中なら目押し停止を試みる
 		} else {
-			this.lever.pull();  // 停止中ならレバーを引く
+			this.startGame();  // 停止中ならゲームを開始する
 		}
 	}
 
@@ -1007,7 +886,8 @@ class SlotGame {
 				const available = Math.max(0, this.creditConfig.creditLimit - this.debt);
 				if (available <= 0) {
 					console.warn('借入上限に達しています。bet=', bet, 'balance=', this.balance, 'debt=', this.debt);
-					this.isSpinning = false;
+					this.ui.setActionBtnText('▶ スタート');
+					this.ui.setActionBtnDisabled(false);
 					return;
 				}
 				const toBorrow = Math.min(need, available);
@@ -1018,7 +898,8 @@ class SlotGame {
 				this.updateDebtUI();
 			} else {
 				console.warn('残高不足かつ借入無効: bet=', bet, 'balance=', this.balance);
-				this.isSpinning = false;
+				this.ui.setActionBtnText('▶ スタート');
+				this.ui.setActionBtnDisabled(false);
 				return;
 			}
 		}
@@ -1039,7 +920,8 @@ class SlotGame {
 		try { this.soundManager?.loopStart(); } catch (e) { }
 
 		if (this.isAutoMode) {
-			// 自動モードの場合: 自動停止タイマーを設定
+			// 自動モードの場合: スタートボタンを一時的に無効化し、自動停止タイマーを設定
+			this.ui.setActionBtnDisabled(true);
 
 			// 停止順序は常に左→中→右（index昇順）。乱数ゆらぎは維持しつつ、最小ギャップで順序を強制。
 			const targets = this.config.stopTargets || [];
@@ -1178,7 +1060,8 @@ class SlotGame {
 			});
 		}
 		else {
-			// 目押しモードの場合: 何もしない（手動停止を待つ）
+			// 目押しモードの場合: スタートボタンのテキストを「停止」に変更
+			this.ui.setActionBtnText('⏸ 停止');
 		}
 	}
 
@@ -1241,8 +1124,6 @@ class SlotGame {
 		if (!reel.spinning) return; // 既に停止している場合は何もしない
 
 		cancelAnimationFrame(reel.animationFrameId); // 回転アニメーションをキャンセル
-		// clear the stored id to avoid holding a stale requestAnimationFrame id
-		reel.animationFrameId = null;
 
 		const currentY = this.ui.getCurrentTranslateY(reel.element); // 現在のY座標を取得
 
@@ -1385,8 +1266,7 @@ class SlotGame {
 					baseTargetY = best.baseY;
 					animTargetY = best.y;
 				}
-			}
-			else {
+			} else {
 				// 指定が不正または欠落している場合は通常停止処理へフォールバック
 				// （再帰呼び出しにより最終的に nearest boundary 停止へ統一される）
 				return this.stopReel(index, null);
@@ -1524,7 +1404,7 @@ class SlotGame {
 
 		// 最後のリールを停止させたら、誤操作防止のためにボタンを無効化
 		if (this.manualStopCount === this.config.reelCount) {
-			// Lever doesn't have a disabled state, so we do nothing here.
+			this.ui.setActionBtnDisabled(true);
 		}
 	}
 
@@ -1538,6 +1418,8 @@ class SlotGame {
 			this.isSpinning = false; // ゲーム全体が停止状態であることを示す
 			// サウンド: 回転ループ停止
 			try { this.soundManager?.loopStop(); } catch (e) { }
+			this.ui.setActionBtnText('▶ スタート'); // ボタンテキストを「スタート」に戻す
+			this.ui.setActionBtnDisabled(false); // ボタンを有効化
 
 			// 全リール停止後: 当たり判定とペイアウト処理
 			let payout = this.evaluatePayout();
