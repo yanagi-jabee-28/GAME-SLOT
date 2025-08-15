@@ -44,27 +44,21 @@
 
       <!-- ゲームの操作ボタンをまとめるコンテナ -->
       <div class="controls">
-            <!-- 
-          アクションボタン:
-          ゲームの「スタート」および、目押しモード時の「ストップ」機能を担います。
-          注意: id="actionBtn" は script.js 内でクリックイベントを検知するために不可欠です。
-                このidを変更すると、ボタンが機能しなくなりますので、ご注意ください。
-        -->
-            <button id="actionBtn">▶ スタート</button>
-            <!-- 
-          モード切り替えボタン:
-          リールの停止方法を「自動」と「目押し」で切り替えます。
-          注意: id="modeBtn" は script.js 内でモード切替のロジックと連携しています。
-                このidを変更すると、モード切替が動作しなくなります。
-        -->
-            <button id="modeBtn">モード: 自動</button>
+            <div class="controls-top">
+                  <!-- 上段: スタートボタン（中央に独立配置） -->
+                  <button id="actionBtn">▶ スタート</button>
+            </div>
+            <div class="controls-bottom">
+                  <!-- 下段: その他の操作群 -->
+                  <button id="modeBtn">モード: 自動</button>
 
-            <!-- 賭け金入力と残高表示 -->
-            <div class="finance" style="display:inline-block; margin-left:16px; vertical-align:middle;">
-                  <label for="betInput" style="margin-right:6px;">賭け金</label>
-                  <input id="betInput" type="number" min="1" value="10" style="width:80px;">
-                  <span style="margin-left:12px;">残高: ¥<span id="balance" class="badge">1000</span></span>
-                  <span style="margin-left:12px;">借金: ¥<span id="debt" class="badge">0</span></span>
+                  <!-- 賭け金入力と残高表示 -->
+                  <div class="finance" style="display:inline-block; margin-left:16px; vertical-align:middle;">
+                        <label for="betInput" style="margin-right:6px;">賭け金</label>
+                        <input id="betInput" type="number" min="1" value="10" style="width:80px;">
+                        <span style="margin-left:12px;">残高: ¥<span id="balance" class="badge">1000</span></span>
+                        <span style="margin-left:12px;">借金: ¥<span id="debt" class="badge">0</span></span>
+                  </div>
             </div>
       </div>
 

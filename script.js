@@ -50,85 +50,17 @@ class UIManager {
 	 * - forced（演出）は確率で1ラインを forced 配当に置換すると仮定して寄与を計算
 	 */
 	computeProbabilityReturnGreaterThanBet(bet) {
-		// ベース: 各ラインで得られる倍率の分布（mult 値に対する確率）
-		const symbols = Object.keys(this.payoutTable);
-		const perReelProb = this.reels.map(r => {
-			const counts = {};
-			for (const s of r.symbols) counts[s] = (counts[s] || 0) + 1;
-			const total = r.symbols.length;
-			const probs = {};
-			Object.keys(counts).forEach(k => probs[k] = counts[k] / total);
-			return probs;
-		});
-
-		// ライン毎の倍率PMF（マップ: multiplier -> probability）
-		const linePMF = new Map();
-		for (const sym of symbols) {
-			let p = 1;
-			for (let i = 0; i < this.reels.length; i++) p *= (perReelProb[i][sym] || 0);
-			const mult = Number(this.payoutTable[sym] || 0);
-			linePMF.set(mult, (linePMF.get(mult) || 0) + p);
-		}
-		// 確率合計が 1 にならない場合、残りは 0 倍（外れ）とする
-		const sumProb = Array.from(linePMF.values()).reduce((s, v) => s + v, 0);
-		if (sumProb < 0.999999) {
-			linePMF.set(0, (linePMF.get(0) || 0) + (1 - sumProb));
-		}
-
-		// ライン数
-		const horizontalLines = 3;
-		const diagonalLines = (this.reels.length === 3) ? 2 : 0;
-		const totalLines = horizontalLines + diagonalLines;
-
-		// 単純畳み込み: 各ラインを独立と仮定して totalLines 回畳み込む
-		// 配当は "倍率 * bet" なので、合計倍率が 1 を超えるかで判定
-		// PMF を配列で持ち、畳み込みを繰り返す
-		let totalPMF = new Map();
-		// 初期: 0倍で確率1
-		totalPMF.set(0, 1);
-		for (let L = 0; L < totalLines; L++) {
-			const next = new Map();
-			for (const [aMult, aP] of totalPMF.entries()) {
-				for (const [bMult, bP] of linePMF.entries()) {
-					const nm = aMult + bMult; // 加算: 各ラインの倍率を足す
-					next.set(nm, (next.get(nm) || 0) + aP * bP);
-				}
+		// このメソッドは SlotGame 側で実装されているため、UIManager からは既存の SlotGame インスタンスへ委譲します。
+		// ブラウザ上で SlotGame インスタンスをグローバルに参照可能にしておけば、ここから呼び出せます。
+		try {
+			if (window && window.activeSlotGame && typeof window.activeSlotGame.computeProbabilityReturnGreaterThanBet === 'function') {
+				return window.activeSlotGame.computeProbabilityReturnGreaterThanBet(bet);
 			}
-			totalPMF = next;
+		} catch (e) {
+			// ignore and fallthrough
 		}
-
-		// forced の寄与: 簡易に、演出が発生した場合は1ラインを forcedMult に置換すると近似
-		const evInfo = this.computeExpectedValuePerUnit();
-		const forcedMult = evInfo.forcedExpectedMult || 0;
-		const horizP = evInfo.horizP || 0;
-		const diagP = evInfo.diagP || 0;
-		const sumP = Math.min(1, horizP + diagP);
-
-		// 元の totalPMF は自然状態の分布。演出が起きる確率 sumP に対して1ラインを forcedMult に置換する処理を近似的に適用する。
-		// 実装簡易化のため、以下を行う:
-		// - 演出なし: 確率 (1 - sumP) * totalPMF
-		// - 演出あり: 確率 sumP * Q で、Q は "任意の1ラインを forcedMult に置換した場合の合計分布" の近似
-		// Q の近似: 任意の1ライン分だけ自然分布から forcedMult に差し替える（平均的に1ライン分を入れ替える）
-
-		// Q を作る: 各 natural total 値 t に対して、t' = t - E[natural one-line mult] + forcedMult
-		const naturalOneLineMean = evInfo.perLineExpectedMult || 0;
-		const adjustedPMF = new Map();
-		for (const [totalMult, p] of totalPMF.entries()) {
-			const adj = Math.max(0, totalMult - naturalOneLineMean + forcedMult);
-			adjustedPMF.set(adj, (adjustedPMF.get(adj) || 0) + p);
-		}
-
-		// 合成分布: (1 - sumP)*totalPMF + sumP*adjustedPMF
-		const finalPMF = new Map();
-		for (const [m, p] of totalPMF.entries()) finalPMF.set(m, (finalPMF.get(m) || 0) + p * (1 - sumP));
-		for (const [m, p] of adjustedPMF.entries()) finalPMF.set(m, (finalPMF.get(m) || 0) + p * sumP);
-
-		// 最終的に "合計倍率 > 1" の確率を計算
-		let prob = 0;
-		for (const [m, p] of finalPMF.entries()) {
-			if (m > 1 - 1e-12) prob += p; // float tolerance
-		}
-		return prob;
+		// フォールバック: 実装が見つからない場合は 0 を返す（安全なデフォルト）
+		return 0;
 	}
 
 	/**
@@ -395,6 +327,9 @@ class SlotGame {
 		// ...existing code...
 		this.config = config;
 		this.ui = new UIManager(config); // UIManagerのインスタンスを生成
+
+		// グローバル参照を設定して UIManager から委譲できるようにする
+		try { window.activeSlotGame = this; } catch (e) { /* ignore */ }
 		// サウンドマネージャを初期化（設定に基づく）
 		this.soundManager = new SoundManager(this.config);
 

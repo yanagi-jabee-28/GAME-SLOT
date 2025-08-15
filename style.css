@@ -137,7 +137,8 @@ body {
 	margin-top: 10px;
 	/* スロット本体との間に余白を設ける */
 	display: flex;
-	flex-wrap: wrap;
+	flex-direction: column;
+	/* 縦方向に並べる: 上段(スタート) / 下段(その他) */
 	/* 複数行に折り返す */
 	align-items: center;
 	justify-content: center;
@@ -145,13 +146,31 @@ body {
 }
 
 /* スタートボタンは上段でセンタリングし、スロット本体の中心線と揃うようにする */
-.controls>#actionBtn {
-	flex: 0 0 100%;
-	/* 1行目を占有 */
+.controls-top {
+	width: 100%;
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	margin: 6px 0;
+}
+
+.controls-bottom {
+	width: 100%;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	gap: 12px;
+}
+
+/* スタートボタンの大きさを抑える (全体のボタンスタイルを上書き) */
+.controls>#actionBtn {
+	max-width: 220px;
+	/* 横幅の上限を設定して巨大化を防ぐ */
+	padding: 8px 14px;
+	/* 少し小さめのパディング */
+	font-size: 14px;
+	/* 文字サイズをやや縮小 */
+	margin: 8px auto;
+	/* 中央寄せで上下の余白を調整 */
 }
 
 /* 他のコントロールは2列目以降に並ぶ */
