@@ -629,6 +629,74 @@ class SlotGame {
 	}
 
 	/**
+	 * 開発者向け: 与えられた掛け金で "return > bet" となる確率を近似計算する
+	 * 単純化モデル: ライン間独立、forced 演出は1ラインを置換する近似
+	 */
+	computeProbabilityReturnGreaterThanBet(bet) {
+		// ライン毎の倍率PMF を作る
+		const symbols = Object.keys(this.payoutTable);
+		const perReelProb = this.reels.map(r => {
+			const counts = {};
+			for (const s of r.symbols) counts[s] = (counts[s] || 0) + 1;
+			const total = r.symbols.length;
+			const probs = {};
+			Object.keys(counts).forEach(k => probs[k] = counts[k] / total);
+			return probs;
+		});
+
+		const linePMF = new Map();
+		for (const sym of symbols) {
+			let p = 1;
+			for (let i = 0; i < this.reels.length; i++) p *= (perReelProb[i][sym] || 0);
+			const mult = Number(this.payoutTable[sym] || 0);
+			linePMF.set(mult, (linePMF.get(mult) || 0) + p);
+		}
+		const sumProb = Array.from(linePMF.values()).reduce((s, v) => s + v, 0);
+		if (sumProb < 0.999999) linePMF.set(0, (linePMF.get(0) || 0) + (1 - sumProb));
+
+		const horizontalLines = 3;
+		const diagonalLines = (this.reels.length === 3) ? 2 : 0;
+		const totalLines = horizontalLines + diagonalLines;
+
+		// 単純畳み込み
+		let totalPMF = new Map();
+		totalPMF.set(0, 1);
+		for (let L = 0; L < totalLines; L++) {
+			const next = new Map();
+			for (const [aMult, aP] of totalPMF.entries()) {
+				for (const [bMult, bP] of linePMF.entries()) {
+					const nm = aMult + bMult;
+					next.set(nm, (next.get(nm) || 0) + aP * bP);
+				}
+			}
+			totalPMF = next;
+		}
+
+		const evInfo = this.computeExpectedValuePerUnit();
+		const forcedMult = evInfo.forcedExpectedMult || 0;
+		const horizP = evInfo.horizP || 0;
+		const diagP = evInfo.diagP || 0;
+		const sumP = Math.min(1, horizP + diagP);
+
+		const naturalOneLineMean = evInfo.perLineExpectedMult || 0;
+		const adjustedPMF = new Map();
+		for (const [totalMult, p] of totalPMF.entries()) {
+			const adj = Math.max(0, totalMult - naturalOneLineMean + forcedMult);
+			adjustedPMF.set(adj, (adjustedPMF.get(adj) || 0) + p);
+		}
+
+		const finalPMF = new Map();
+		for (const [m, p] of totalPMF.entries()) finalPMF.set(m, (finalPMF.get(m) || 0) + p * (1 - sumP));
+		for (const [m, p] of adjustedPMF.entries()) finalPMF.set(m, (finalPMF.get(m) || 0) + p * sumP);
+
+		let prob = 0;
+		for (const [m, p] of finalPMF.entries()) {
+			if (m > 1 - 1e-12) prob += p;
+		}
+		return prob;
+	}
+
+	/**
 	 * 開発者パネルを描画します（トグルで表示/非表示）。
 	 */
 	renderDevPanel() {
