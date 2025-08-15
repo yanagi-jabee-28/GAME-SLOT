@@ -365,3 +365,48 @@ button:disabled {
 	margin-top: 6px;
 	font-weight: 600;
 }
+
+/* --- 目押し用の赤い丸ボタン --- */
+.manual-controls {
+	margin: 8px auto 0 auto;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	gap: 14px;
+}
+
+.stop-btn {
+	width: 54px;
+	height: 54px;
+	border-radius: 50%;
+	border: 2px solid #a00;
+	background: radial-gradient(circle at 30% 30%, #ff7373, #e02020 60%, #b40000 100%);
+	color: #fff;
+	font-weight: 800;
+	font-size: 18px;
+	box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5), inset 0 2px 6px rgba(255, 255, 255, 0.25);
+	cursor: pointer;
+	transition: transform 0.05s ease, filter 0.15s ease, opacity 0.2s ease;
+}
+
+.stop-btn:hover {
+	filter: brightness(1.05);
+}
+
+.stop-btn:active {
+	transform: scale(0.96);
+}
+
+.stop-btn:disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
+	filter: grayscale(40%);
+}
+
+@media (max-width: 480px) {
+	.stop-btn {
+		width: 48px;
+		height: 48px;
+		font-size: 16px;
+	}
+}

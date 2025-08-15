@@ -70,6 +70,12 @@ class UIManager {
 		this.elements.slotContainer = document.querySelector(this.config.selectors.slotMachine);
 		this.elements.actionBtn = document.querySelector(this.config.selectors.actionBtn);
 		this.elements.modeBtn = document.querySelector(this.config.selectors.modeBtn);
+		// 目押し個別停止ボタン（存在しない場合は null のまま）
+		this.elements.stopBtns = [
+			document.getElementById('stopBtn0'),
+			document.getElementById('stopBtn1'),
+			document.getElementById('stopBtn2')
+		];
 	}
 
 	/**
@@ -444,6 +450,8 @@ class SlotGame {
 		this.renderPayoutTable();
 		// 賭け金入力の自動サイズ調整を初期化
 		this.initBetInputAutoSize();
+		// 目押しボタンの初期状態を反映
+		this.updateManualButtonsUI();
 		// 開発者モードパネルを準備（表示はトグル可能）
 		if (this.config && this.config.devPanelEnabled) {
 			this.renderDevPanel();
@@ -824,6 +832,16 @@ class SlotGame {
 		// モード切り替えボタンがクリックされたらtoggleModeメソッドを実行
 		this.ui.elements.modeBtn.addEventListener('click', () => this.toggleMode());
 
+		// 個別停止ボタン: 目押しモード時のみ動作、回転中のみ有効
+		const stopBtns = this.ui.elements.stopBtns || [];
+		stopBtns.forEach((btn, i) => {
+			if (!btn) return;
+			btn.addEventListener('click', (e) => {
+				e.preventDefault();
+				this.handleManualStopButton(i);
+			});
+		});
+
 		// キーボード: スペースキーでスタート/停止をトグル
 		document.addEventListener('keydown', (e) => {
 			if (e.code === 'Space') {
@@ -831,6 +849,14 @@ class SlotGame {
 				if (e.repeat) return;
 				e.preventDefault();
 				this.handleAction();
+			}
+			// 1/2/3 キーで対応するリールを止める（目押しモード時のみ）
+			if (!e.repeat && !this.isAutoMode && this.isSpinning) {
+				const ae = document.activeElement;
+				if (ae && ((ae.tagName === 'INPUT') || (ae.tagName === 'TEXTAREA') || ae.isContentEditable)) return;
+				if (e.key === '1') { e.preventDefault(); this.handleManualStopButton(0); }
+				else if (e.key === '2') { e.preventDefault(); this.handleManualStopButton(1); }
+				else if (e.key === '3') { e.preventDefault(); this.handleManualStopButton(2); }
 			}
 		});
 
@@ -861,6 +887,7 @@ class SlotGame {
 		this.isAutoMode = !this.isAutoMode; // モードフラグを反転
 		// ボタンのテキストを現在のモードに合わせて更新
 		this.ui.setModeBtnText(`モード: ${this.isAutoMode ? '自動' : '目押し'}`);
+		this.updateManualButtonsUI();
 	}
 
 	/**
@@ -870,7 +897,7 @@ class SlotGame {
 	startGame() {
 		if (this.isSpinning) return; // 既に回転中であれば、多重起動を防ぐ
 		this.isSpinning = true;      // ゲーム全体が回転中であることを示すフラグを立てる
-		this.manualStopCount = 0;    // 目押しカウンターをリセット
+		this.manualStopCount = 0;    // 目押しカウンターをリセット（互換のため保持）
 
 		// 現在のモードに応じたリール回転速度を設定
 		const speed = this.isAutoMode ? this.config.autoSpeed : this.config.manualSpeed;
@@ -922,6 +949,7 @@ class SlotGame {
 		if (this.isAutoMode) {
 			// 自動モードの場合: スタートボタンを一時的に無効化し、自動停止タイマーを設定
 			this.ui.setActionBtnDisabled(true);
+			this.updateManualButtonsUI();
 
 			// 停止順序は常に左→中→右（index昇順）。乱数ゆらぎは維持しつつ、最小ギャップで順序を強制。
 			const targets = this.config.stopTargets || [];
@@ -1062,6 +1090,7 @@ class SlotGame {
 		else {
 			// 目押しモードの場合: スタートボタンのテキストを「停止」に変更
 			this.ui.setActionBtnText('⏸ 停止');
+			this.updateManualButtonsUI();
 		}
 	}
 
@@ -1337,6 +1366,8 @@ class SlotGame {
 					reel.element.style.transform = `translateY(${finalY}px)`;
 					reel.spinning = false;
 					reel.element.classList.remove('spinning'); // 回転中クラスを削除
+					// 目押しボタンの活性状態を更新（途中停止でも反映）
+					try { this.updateManualButtonsUI(); } catch (e) { }
 					// サウンド: リール停止
 					try { this.soundManager?.playReelStop(); } catch (e) { }
 					// 右端リール（最後のリール）が停止したタイミングで回転ループを停止する
@@ -1396,16 +1427,41 @@ class SlotGame {
 	 * 自動モード中や、全てのリールが停止済みの場合は何もしません。
 	 */
 	stopManual() {
-		// 自動モード中、または全てのリールが停止済みであれば処理を中断
-		if (this.isAutoMode || this.manualStopCount >= this.config.reelCount) return;
+		// 互換: スペースキーやスタートボタンからの「次を止める」操作
+		if (this.isAutoMode) return; // 自動モードでは無効
+		// 左から順に、まだ回っている最初のリールを停止
+		const idx = this.reels.findIndex(r => r.spinning);
+		if (idx === -1) return;
+		this.stopReel(idx);
+		this.manualStopCount = Math.min(this.manualStopCount + 1, this.config.reelCount);
+		this.updateManualButtonsUI();
+	}
 
-		this.stopReel(this.manualStopCount); // 現在のカウンターに対応するリールを停止
-		this.manualStopCount++;              // 次に停止させるリールのインデックスを更新
+	/** 個別停止ボタン/1-3キーの処理（回転開始はしない） */
+	handleManualStopButton(reelIndex) {
+		if (this.isAutoMode) return;          // 目押しモード以外は無効
+		if (!this.isSpinning) return;         // 回転中でない場合は無効
+		if (reelIndex < 0 || reelIndex >= this.reels.length) return;
+		const reel = this.reels[reelIndex];
+		if (!reel.spinning) return;           // 既に止まっているリールは無視
+		this.stopReel(reelIndex);
+		this.manualStopCount = Math.min(this.manualStopCount + 1, this.config.reelCount);
+		this.updateManualButtonsUI();
+	}
 
-		// 最後のリールを停止させたら、誤操作防止のためにボタンを無効化
-		if (this.manualStopCount === this.config.reelCount) {
-			this.ui.setActionBtnDisabled(true);
+	/** 目押しボタンの活性/非活性を現在状態に合わせて更新 */
+	updateManualButtonsUI() {
+		const btns = (this.ui.elements.stopBtns) || [];
+		const container = document.getElementById('manualControls');
+		// 表示/非表示: モードが目押しのとき常時表示。自動モード時は視覚的には表示してもよいが無効化。
+		if (container) {
+			container.style.opacity = this.isAutoMode ? '0.6' : '1';
 		}
+		btns.forEach((btn, i) => {
+			if (!btn) return;
+			const enabled = !this.isAutoMode && this.isSpinning && Boolean(this.reels[i]?.spinning);
+			btn.disabled = !enabled;
+		});
 	}
 
 	/**
@@ -1420,6 +1476,7 @@ class SlotGame {
 			try { this.soundManager?.loopStop(); } catch (e) { }
 			this.ui.setActionBtnText('▶ スタート'); // ボタンテキストを「スタート」に戻す
 			this.ui.setActionBtnDisabled(false); // ボタンを有効化
+			this.updateManualButtonsUI();
 
 			// 全リール停止後: 当たり判定とペイアウト処理
 			let payout = this.evaluatePayout();
