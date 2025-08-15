@@ -366,14 +366,14 @@ button:disabled {
 
 	/* ストップボタンをさらに大きく */
 	.stop-btn {
-		width: 80px;
-		height: 80px;
-		font-size: 24px;
+		width: calc(var(--base-reel-width) * var(--ui-scale));
+		height: calc(var(--base-reel-width) * var(--ui-scale));
+		font-size: calc(var(--base-reel-width) * var(--ui-scale) * 0.32);
 	}
 
 	/* 並びの間隔も少し広げる */
 	.manual-controls {
-		gap: 26px;
+		gap: 16px;
 	}
 
 	/* レバーをやや小回りよく、はみ出し抑制 */
@@ -440,18 +440,18 @@ button:disabled {
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	gap: 20px;
+	gap: 10px;
 }
 
 .stop-btn {
-	width: 72px;
-	height: 72px;
+	width: calc(var(--base-reel-width) * var(--ui-scale));
+	height: calc(var(--base-reel-width) * var(--ui-scale));
 	border-radius: 50%;
 	border: 2px solid #a00;
 	background: radial-gradient(circle at 30% 30%, #ff7373, #e02020 60%, #b40000 100%);
 	color: #fff;
 	font-weight: 800;
-	font-size: 22px;
+	font-size: calc(var(--base-reel-width) * var(--ui-scale) * 0.32);
 	box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5), inset 0 2px 6px rgba(255, 255, 255, 0.25);
 	cursor: pointer;
 	transition: transform 0.05s ease, filter 0.15s ease, opacity 0.2s ease;
