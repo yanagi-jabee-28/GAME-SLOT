@@ -136,6 +136,40 @@ body {
 .controls {
 	margin-top: 10px;
 	/* スロット本体との間に余白を設ける */
+	display: flex;
+	flex-wrap: wrap;
+	/* 複数行に折り返す */
+	align-items: center;
+	justify-content: center;
+	gap: 12px;
+}
+
+/* スタートボタンは上段でセンタリングし、スロット本体の中心線と揃うようにする */
+.controls>#actionBtn {
+	flex: 0 0 100%;
+	/* 1行目を占有 */
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	margin: 6px 0;
+}
+
+/* 他のコントロールは2列目以降に並ぶ */
+.controls>button:not(#actionBtn) {
+	flex: 0 0 auto;
+}
+
+/* 永続化ボタン群のラッパー */
+#persistenceControls {
+	display: inline-flex;
+	gap: 8px;
+	align-items: center;
+	margin-left: 8px;
+}
+
+#persistenceControls button {
+	padding: 8px 12px;
+	font-size: 14px;
 }
 
 /* button: 全てのボタンに共通のスタイル */

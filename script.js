@@ -467,6 +467,44 @@ class SlotGame {
 			wm.innerHTML = `<span class="amount"></span><span class="sub">おめでとうございます!</span>`;
 			document.body.appendChild(wm);
 		}
+
+		// コントロール領域にエクスポート/インポートUIを追加
+		const controls = document.querySelector('.controls');
+		if (controls && !document.getElementById('persistenceControls')) {
+			const wrap = document.createElement('div');
+			wrap.id = 'persistenceControls';
+			wrap.style.display = 'inline-block';
+			wrap.style.marginLeft = '12px';
+			// Export button
+			const exp = document.createElement('button');
+			exp.textContent = '残高をエクスポート';
+			exp.title = '現在の残高をパスワード文字列としてコピーします';
+			exp.addEventListener('click', (e) => {
+				e.preventDefault();
+				const pw = this.generateBalancePassword();
+				navigator.clipboard?.writeText(pw).then(() => {
+					alert('パスワードをクリップボードにコピーしました:\n' + pw);
+				}).catch(() => {
+					prompt('以下のパスワードをコピーしてください:', pw);
+				});
+			});
+			wrap.appendChild(exp);
+
+			// Import button
+			const imp = document.createElement('button');
+			imp.textContent = '残高を復元';
+			imp.title = '保存してあるパスワード文字列から残高を復元します';
+			imp.addEventListener('click', (e) => {
+				e.preventDefault();
+				const v = prompt('復元するパスワードを入力してください:');
+				if (!v) return;
+				const ok = this.restoreFromPassword(v.trim());
+				if (!ok) alert('復元に失敗しました。パスワードが正しいか確認してください。');
+				else alert('復元に成功しました。');
+			});
+			wrap.appendChild(imp);
+			controls.appendChild(wrap);
+		}
 		// 配当表をレンダリング
 		this.renderPayoutTable();
 		// 賭け金入力の自動サイズ調整を初期化
@@ -1492,6 +1530,99 @@ class SlotGame {
 		if (!el) return;
 		el.classList.remove('show');
 		if (this._winMsgTimer) { clearTimeout(this._winMsgTimer); this._winMsgTimer = null; }
+	}
+
+	/* --------------------------
+	 * Balance <-> Password persistence
+	 * - 可逆的な簡易エンコード: UTF-8バイト列を salt バイト列で XOR し、base64url 化する
+	 * - salt は gameConfig.persistenceSalt があればそれを使い、なければ既定値を使用
+	 * - 目的: 残高を文字列化してユーザーがコピー/保存し、復帰時にその文字列を入力することで残高を復元できる
+	 * 注意: この方式は暗号的に強固ではありません。より強い保護が必要なら server-side の署名や Web Crypto を使った HMAC を導入してください。
+	 */
+	getPersistenceSalt() {
+		if (window.gameConfig && gameConfig.persistenceSalt) return String(gameConfig.persistenceSalt);
+		// デフォルトの salt（将来変更すると復元できなくなるため注意）
+		return 'GAME-ON-PERSIST-V1';
+	}
+
+	_utf8ToBytes(str) {
+		return new TextEncoder().encode(String(str));
+	}
+
+	_bytesToUtf8(bytes) {
+		return new TextDecoder().decode(bytes);
+	}
+
+	_xorWithSalt(bytes, saltBytes) {
+		const out = new Uint8Array(bytes.length);
+		for (let i = 0; i < bytes.length; i++) {
+			out[i] = bytes[i] ^ saltBytes[i % saltBytes.length];
+		}
+		return out;
+	}
+
+	_base64UrlEncode(bytes) {
+		let bin = '';
+		for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+		return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+	}
+
+	_base64UrlDecode(str) {
+		str = String(str).replace(/-/g, '+').replace(/_/g, '/');
+		// パディングを戻す
+		while (str.length % 4) str += '=';
+		const bin = atob(str);
+		const out = new Uint8Array(bin.length);
+		for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+		return out;
+	}
+
+	encodeBalanceToPassword(balance) {
+		const obj = { v: 1, b: Math.round(Number(balance) || 0), t: Date.now() };
+		const s = JSON.stringify(obj);
+		const data = this._utf8ToBytes(s);
+		const salt = this._utf8ToBytes(this.getPersistenceSalt());
+		const x = this._xorWithSalt(data, salt);
+		return this._base64UrlEncode(x);
+	}
+
+	decodePasswordToObject(pw) {
+		try {
+			const bytes = this._base64UrlDecode(pw);
+			const salt = this._utf8ToBytes(this.getPersistenceSalt());
+			const dec = this._xorWithSalt(bytes, salt);
+			const json = this._bytesToUtf8(dec);
+			const obj = JSON.parse(json);
+			if (!obj || typeof obj.b !== 'number') throw new Error('invalid');
+			return obj;
+		} catch (e) {
+			throw new Error('パスワードの形式が不正です');
+		}
+	}
+
+	/**
+	 * 現在の残高からパスワード文字列を生成して返す
+	 */
+	generateBalancePassword() {
+		return this.encodeBalanceToPassword(this.balance);
+	}
+
+	/**
+	 * パスワード文字列から残高を復元する。成功すれば true を返す。
+	 */
+	restoreFromPassword(pw) {
+		try {
+			const obj = this.decodePasswordToObject(pw);
+			// バージョン互換チェック
+			if (obj.v !== 1) throw new Error('unsupported version');
+			this.balance = Number(obj.b) || 0;
+			this.updateBalanceUI();
+			console.info('Balance restored from password:', this.balance);
+			return true;
+		} catch (e) {
+			console.warn('Restore failed:', e);
+			return false;
+		}
 	}
 
 	/**
