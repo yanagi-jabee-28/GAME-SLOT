@@ -4,6 +4,27 @@
  *        リールの生成、回転アニメーション、停止制御、ゲームモードの切り替えなどを担当します。
  */
 
+// --- 共通ユーティリティ（純粋関数群） --------------------------------------
+/** 数値を[min,max]にクランプ */
+function clamp(v, min, max) { return Math.min(Math.max(v, min), max); }
+
+/**
+ * 重み付き乱択。
+ * @param {Array<{key:any, weight:number}>} items - weight>0 の要素のみ考慮
+ * @returns any 選択された key（候補が無い場合はnull）
+ */
+function weightedChoice(items) {
+	const valid = items.filter(it => (it && typeof it.weight === 'number' && it.weight > 0));
+	if (valid.length === 0) return null;
+	const total = valid.reduce((s, it) => s + it.weight, 0);
+	let r = Math.random() * total;
+	for (const it of valid) {
+		r -= it.weight;
+		if (r <= 0) return it.key;
+	}
+	return valid[valid.length - 1].key;
+}
+
 /**
  * 設計概要 / アーキテクチャ
  * - 役割分担:
@@ -334,6 +355,9 @@ class SlotGame {
 		this.config = config;
 		this.ui = new UIManager(config); // UIManagerのインスタンスを生成
 
+		// 共通定義（行の名前と行インデックスの対応）
+		this.ROW_NAMES = ['top', 'middle', 'bottom'];
+
 		// グローバル参照を設定して UIManager から委譲できるようにする
 		try { window.activeSlotGame = this; } catch (e) { /* ignore */ }
 		// サウンドマネージャを初期化（設定に基づく）
@@ -519,14 +543,7 @@ class SlotGame {
 
 	computeExpectedValuePerUnit() {
 		// 各リールごとのシンボル確率を算出（固定停止位置が一様であるという前提）
-		const perReelProb = this.reels.map(r => {
-			const counts = {};
-			for (const s of r.symbols) counts[s] = (counts[s] || 0) + 1;
-			const total = r.symbols.length;
-			const probs = {};
-			Object.keys(counts).forEach(k => probs[k] = counts[k] / total);
-			return probs;
-		});
+		const perReelProb = this.getPerReelSymbolProbs();
 
 		// ラインあたりの期待倍率 = sum_over_symbols( product_over_reels P_r(symbol) * multiplier(symbol) )
 		const symbols = Object.keys(this.payoutTable);
@@ -540,10 +557,8 @@ class SlotGame {
 			perLineExpectedMult += p * mult;
 		}
 
-		// ライン数: 水平3行 + (3リール時のみ斜め2行)
-		const horizontalLines = 3;
-		const diagonalLines = (this.reels.length === 3) ? 2 : 0;
-		const totalLines = horizontalLines + diagonalLines;
+		// ライン数（定義から算出）
+		const totalLines = this.getWinningLines().length;
 
 		// 自然発生による1ベットあたりの期待倍率（全ライン合算）
 		const evNaturalPerUnit = totalLines * perLineExpectedMult;
@@ -563,8 +578,8 @@ class SlotGame {
 		}
 
 		// 演出確率
-		const horizP = Math.max(0, Math.min(1, Number(this.config.winHorizontalProbability) || 0));
-		const diagP = Math.max(0, Math.min(1, Number(this.config.winDiagonalProbability) || 0));
+		const horizP = clamp(Number(this.config.winHorizontalProbability) || 0, 0, 1);
+		const diagP = clamp(Number(this.config.winDiagonalProbability) || 0, 0, 1);
 		const sumP = Math.min(1, horizP + diagP);
 
 		// 合成: 演出が起きた場合は forced により1ライン分（簡易仮定）の配当が得られるものとする。
@@ -581,14 +596,7 @@ class SlotGame {
 	computeProbabilityReturnGreaterThanBet(bet) {
 		// ライン毎の倍率PMF を作る
 		const symbols = Object.keys(this.payoutTable);
-		const perReelProb = this.reels.map(r => {
-			const counts = {};
-			for (const s of r.symbols) counts[s] = (counts[s] || 0) + 1;
-			const total = r.symbols.length;
-			const probs = {};
-			Object.keys(counts).forEach(k => probs[k] = counts[k] / total);
-			return probs;
-		});
+		const perReelProb = this.getPerReelSymbolProbs();
 
 		const linePMF = new Map();
 		for (const sym of symbols) {
@@ -600,9 +608,7 @@ class SlotGame {
 		const sumProb = Array.from(linePMF.values()).reduce((s, v) => s + v, 0);
 		if (sumProb < 0.999999) linePMF.set(0, (linePMF.get(0) || 0) + (1 - sumProb));
 
-		const horizontalLines = 3;
-		const diagonalLines = (this.reels.length === 3) ? 2 : 0;
-		const totalLines = horizontalLines + diagonalLines;
+		const totalLines = this.getWinningLines().length;
 
 		// 単純畳み込み
 		let totalPMF = new Map();
@@ -1102,7 +1108,7 @@ class SlotGame {
 				const existsOnAll = this.reels.every(r => r.symbols.includes(chosenSymbol));
 				if (existsOnAll) {
 					if (winType === 'horizontal') {
-						const rows = ['top', 'middle', 'bottom'];
+						const rows = this.ROW_NAMES;
 						const rowMode = this.config.winRowMode;
 						const row = rows.includes(rowMode) ? rowMode : rows[Math.floor(Math.random() * rows.length)];
 						spinTargets = this.reels.map((_r, idx) => ({ reelIndex: idx, symbol: chosenSymbol, position: row }));
@@ -1121,7 +1127,7 @@ class SlotGame {
 							spinTargets = this.reels.map((_r, idx) => ({ reelIndex: idx, symbol: chosenSymbol, position: positions[idx] }));
 						} else {
 							// reelCount != 3 の場合は水平にフォールバック
-							const rows = ['top', 'middle', 'bottom'];
+							const rows = this.ROW_NAMES;
 							const row = rows[Math.floor(Math.random() * rows.length)];
 							spinTargets = this.reels.map((_r, idx) => ({ reelIndex: idx, symbol: chosenSymbol, position: row }));
 						}
@@ -1380,7 +1386,7 @@ class SlotGame {
 				console.log(`Current Y: ${currentY}px`);
 				console.log(`Reel Symbols Length: ${reelSymbols.length}`);
 				console.log(`Symbol Height: ${symbolHeight}px`);
-				console.log(`Total Height (2x): ${totalHeight}px`);
+				console.log(`Total Height (1x): ${totalHeight}px`);
 				console.log(`Target Symbol Top Index: ${targetSymbolTopIndex}`);
 				console.log(`Base Target Y: ${baseTargetY}px`);
 				console.log(`Closest Target Y (anim): ${animTargetY}px`);
@@ -1557,53 +1563,49 @@ class SlotGame {
 	 * @returns {number} payout (0 なら外れ)
 	 */
 	evaluatePayout() {
-		// helper: visible symbol index at a given row position (0=top,1=middle,2=bottom)
-		const visibleIndexAtRow = (reel, row) => {
-			const y = this.ui.getCurrentTranslateY(reel.element);
-			// top index
-			const topIdx = (Math.round(-y / this.config.symbolHeight) % reel.symbols.length + reel.symbols.length) % reel.symbols.length;
-			// row offset: top + row
-			return (topIdx + row) % reel.symbols.length;
-		};
+		// 先に各リールの top インデックスを1回ずつ計算して使い回す
+		const topIdxPerReel = this.reels.map(r => {
+			const y = this.ui.getCurrentTranslateY(r.element);
+			const len = r.symbols.length;
+			return (Math.round(-y / this.config.symbolHeight) % len + len) % len;
+		});
 
-		let totalPayout = 0;
+		const lines = this.getWinningLines();
 		const bet = this.currentBet || 0;
+		let totalPayout = 0;
 
-		// check horizontal lines: row = 0 (top), 1 (middle), 2 (bottom)
-		for (let row = 0; row < 3; row++) {
-			const syms = this.reels.map(r => r.symbols[visibleIndexAtRow(r, row)]);
+		for (const line of lines) {
+			const syms = line.map((rowIdx, reelIdx) => {
+				const r = this.reels[reelIdx];
+				const len = r.symbols.length;
+				const visIdx = (topIdxPerReel[reelIdx] + rowIdx) % len;
+				return r.symbols[visIdx];
+			});
 			if (syms.every(s => s === syms[0])) {
-				const sym = syms[0];
-				const mult = this.payoutTable[sym] || 0;
-				totalPayout += Math.floor(bet * mult);
-			}
-		}
-
-		// check diagonals (assuming 3 reels): TL->BR and BL->TR
-		if (this.reels.length === 3) {
-			// TL->BR: top of reel0, middle of reel1, bottom of reel2 (rows 0,1,2)
-			const diag1 = [
-				this.reels[0].symbols[visibleIndexAtRow(this.reels[0], 0)],
-				this.reels[1].symbols[visibleIndexAtRow(this.reels[1], 1)],
-				this.reels[2].symbols[visibleIndexAtRow(this.reels[2], 2)]
-			];
-			if (diag1.every(s => s === diag1[0])) {
-				const mult = this.payoutTable[diag1[0]] || 0;
-				totalPayout += Math.floor(bet * mult);
-			}
-			// BL->TR: bottom of reel0, middle of reel1, top of reel2 (rows 2,1,0)
-			const diag2 = [
-				this.reels[0].symbols[visibleIndexAtRow(this.reels[0], 2)],
-				this.reels[1].symbols[visibleIndexAtRow(this.reels[1], 1)],
-				this.reels[2].symbols[visibleIndexAtRow(this.reels[2], 0)]
-			];
-			if (diag2.every(s => s === diag2[0])) {
-				const mult = this.payoutTable[diag2[0]] || 0;
+				const mult = this.payoutTable[syms[0]] || 0;
 				totalPayout += Math.floor(bet * mult);
 			}
 		}
 
 		return totalPayout;
+	}
+
+	/**
+	 * 勝利ラインの定義を返す。
+	 * 戻り値は「各ラインにつき、各リールの行インデックス（0=top,1=middle,2=bottom）」の配列。
+	 * 例: 3リール時の水平3行 + 斜め2行 => [[0,0,0],[1,1,1],[2,2,2],[0,1,2],[2,1,0]]
+	 */
+	getWinningLines() {
+		const lines = [
+			[0, 0, 0],
+			[1, 1, 1],
+			[2, 2, 2],
+		];
+		if (this.reels.length === 3) {
+			lines.push([0, 1, 2]); // ↘
+			lines.push([2, 1, 0]); // ↗
+		}
+		return lines;
 	}
 
 	/**
@@ -1772,6 +1774,21 @@ class SlotGame {
 		// フォールバック: 左リールからランダム
 		const symbols = this.reels[0].symbols;
 		return symbols[Math.floor(Math.random() * symbols.length)];
+	}
+
+	/**
+	 * 各リールでのシンボル出現確率マップを返す。
+	 * @returns {Array<Record<string, number>>}
+	 */
+	getPerReelSymbolProbs() {
+		return this.reels.map(r => {
+			const counts = {};
+			for (const s of r.symbols) counts[s] = (counts[s] || 0) + 1;
+			const total = r.symbols.length;
+			const probs = {};
+			Object.keys(counts).forEach(k => probs[k] = counts[k] / total);
+			return probs;
+		});
 	}
 
 	/**
