@@ -136,7 +136,7 @@ const gameConfig = {
 	},
 
 	// 開発者パネルを初期化するかどうか（true: 有効, false: 無効）
-	devPanelEnabled: true,
+	devPanelEnabled: false,
 
 	// --- ファイナンス設定 ---
 	// デフォルトのプレイヤー残高（ローカル開始時の初期値）
