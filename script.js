@@ -372,32 +372,72 @@ class SlotGame {
 				}
 			} else {
 				/*
-				 * 未使用（旧方式）のため実処理は停止：
-				 * 以前は config.autoStopTimings / autoStopTimeRandomness を使用して停止時刻を決めていましたが、
-				 * 現在は autoStopMinTime / autoStopMaxTime に統一しています。
-				 * 本ブロックを復活させる場合は、config 側に旧プロパティを再導入し、
-				 * さらに minSequentialStopGapMs との整合性（最小ギャップが確保されること）を満たすようご注意ください。
-				 * 将来の事故防止のため、ここでは安全な簡易スケジュールを生成して継続可能としています。
+				 * レガシー/互換性用フォールバックの簡易スケジュール生成
+				 *
+				 * 背景:
+				 * - 以前は config.autoStopTimings / autoStopTimeRandomness 等の別プロパティで
+				 *   停止時刻を管理していました。現在は autoStopMinTime / autoStopMaxTime に
+				 *   一本化されていますが、万が一古い設定が混在した場合や、ここを復活させる必要が
+				 *   出たときに安全に動くよう“退避版”を用意しています。
+				 *
+				 * 重要な注意点（将来の編集時に狂いやすい箇所）:
+				 * - 単位感覚: `base`/`step` はミリ秒（setTimeout の単位）を想定しています。変更する際は
+				 *   フロントエンド全体で同じ単位になっているか確認してください（ms vs s 等の混在注意）。
+				 * - minSequentialStopGapMs の意味合い: ここで `step` に minSequentialStopGapMs を使うことで
+				 *   リール間の最小ギャップを担保しています。別箇所で minSequentialStopGapMs を変更すると
+				 *   停止順序や体感が変わるため、互換性のためこの連動を維持すること。
+				 * - setTimeout クロージャ: scheduled をループして setTimeout を登録する際に
+				 *   ループ変数を直接参照する形に変更すると予期せぬインデックス混乱を招きます。
+				 *   必ず各スコープで値をキャプチャする（または構造体に保持する）実装を行ってください。
+				 * - 優先度と整合性: この短絡案は autoStopMinTime/MaxTime の計算結果に比べて
+				 *   明確に遅延が固定化されます。勝ち演出 (spinTargets) の優先度や `targets` 設定と
+				 *   整合するよう留意してください（下流で上書きされる可能性あり）。
+				 *
+				 * 実処理（安全な既定スケジュール）
+				 * - base: 最初の停止が発火するまでの遅延（ms）。UI/体感に合わせて見直し推奨。
+				 * - step: 各リールの停止差分（ms）。minSequentialStopGapMs を尊重して単調増加を担保。
 				 */
 				const count = this.config.reelCount;
-				const base = 1000; // 注意: 任意の既定値。UI/体感に合わせて見直してください。
+				const base = 1000; // ms: 最初のリール停止までの既定遅延。UI 体感に応じて調整してください。
+				// minSequentialStopGapMs を優先してステップ幅を決定。未設定なら安全な下限（100ms）を使用。
 				const step = Math.max(100, this.config.minSequentialStopGapMs ?? 100);
 				scheduled = Array.from({ length: count }, (_v, i) => ({ i, time: base + step * i }));
 			}
 
-			// 当たり（勝ち）発動: 水平/斜めを別確率で制御
+			// --------------------------
+			// 当たり（勝ち）演出の決定
+			// --------------------------
+			/*
+			 * ロジック:
+			 * - horizontal / diagonal のどちらか（またはなし）を確率で決定する。
+			 * - horizP と diagP は独立に設定され得るため、合計が 1 を超えないように clamp する。
+			 * - roll により発動判定を行い、発動した場合は winType を 'horizontal'|'diagonal' に設定する。
+			 *
+			 * 将来の編集で注意すべき点:
+			 * - 確率の合算順序: horizP と diagP の優先度付けを変えると出現傾向が変わるため、
+			 *   ゲームバランス調整時はテストスピンを必ず行ってください。
+			 * - winActivationProbability を用いる古い設定との互換性: 互換性コードが混在すると
+			 *   発動頻度が意図せず増減する可能性があるため、1つに統一することを推奨します。
+			 */
 			const horizP = (typeof this.config.winHorizontalProbability === 'number')
 				? this.config.winHorizontalProbability
 				: ((typeof this.config.winActivationProbability === 'number') ? this.config.winActivationProbability : 0);
 			const diagP = (typeof this.config.winDiagonalProbability === 'number') ? this.config.winDiagonalProbability : 0;
+			// 合計確率を 0..1 にクランプ（溢れを防止）
 			const sumP = Math.min(1, Math.max(0, horizP + diagP));
 			let winType = null; // 'horizontal' | 'diagonal' | null
+
 			const roll = Math.random();
 			if (roll < sumP) {
+				// horizontal を優先的に判定（horizP の範囲に収まれば horizontal、そうでなければ diagonal）
 				winType = (roll < Math.min(1, horizP)) ? 'horizontal' : 'diagonal';
 			}
+
 			let spinTargets = null;
 			if (winType) {
+				// 当たり演出を展開するための絵柄を抽選
+				// chooseSymbolByProbability() は「全リールに存在する絵柄」を返す仕様になっています。
+				// ここで返る絵柄が必ず全リールにある前提で下流処理を書いてよい（存在チェックは二重防御として残す）。
 				const chosenSymbol = this.chooseSymbolByProbability();
 				const existsOnAll = this.reels.every(r => r.symbols.includes(chosenSymbol));
 				if (existsOnAll) {
@@ -508,19 +548,27 @@ class SlotGame {
 		let duration;
 
 		if (target) {
-			// --- ターゲット停止ロジック ---
-			/* 契約と注意点
-			 * 入力: target = { symbolIndex?: number, symbol?: string, position?: 'top'|'middle'|'bottom' }
-			 * 出力: なし（DOM transform の更新と内部状態の更新を伴う副作用）
-			 * 注意:
-			 * - position 未指定時はラップ（境界またぎ）を避けつつ最短距離になる候補を自動選定します。
-			 * - reverseRotation により「前方」の定義が変化します（pickForwardClosestY を参照）。
+			// --- ターゲット停止ロジック（目標に合わせて最短で前方に停止させる） ---
+			/* 契約と注意点（簡潔に）
+			 * - 入力: target = { symbolIndex?: number, symbol?: string, position?: 'top'|'middle'|'bottom' }
+			 * - 副作用: DOM の transform を更新し、該当リールを停止状態にする。
+			 * - 重要: reverseRotation が true の場合は「進行方向」が逆転するため、
+			 *   「前方／後方」の計算を必ず考慮すること（以下 pickForwardClosestY 参照）。
+			 * - 将来の編集で狂いやすい点:
+			 *   1) pickForwardClosestY のループ判定を壊すと無限ループや誤ったオフセットが発生します。
+			 *   2) 正規化式（mod -> -totalHeight）を変更すると表示が半周ずれるため慎重に。
+			 *   3) reel.totalHeight とここで計算する totalHeight を混在させると整合性が崩れる可能性があるため、
+			 *      どちらかに統一することを推奨します（本実装は既存プロパティを優先）。
 			 */
+
 			const reelSymbols = reel.symbols;
 			const symbolHeight = this.config.symbolHeight;
-			const totalHeight = reelSymbols.length * symbolHeight; // 無限スクロールのためのシンボル総高
+			// ※ totalHeight は「1周分の高さ」を示す（reel.totalHeight は2周分を保持している呼び出し側もある）。
+			//    ここでは明示的に算出しているが、以降の計算では既存の reel.totalHeight を参照している箇所があるため
+			//    将来編集する場合はどちらを正とするか統一して下さい。
+			const totalHeight = reelSymbols.length * symbolHeight;
 
-			// position 未指定/不正時は後でシーム回避を考慮して選択（暫定はランダム）
+			// position の意味: top=表示上端にシンボルの先頭、middle=1つ下、bottom=2つ下に該当するようにオフセットを設ける
 			const validPositions = ['top', 'middle', 'bottom'];
 			let chosenPosition = validPositions.includes(target.position)
 				? target.position
@@ -529,16 +577,22 @@ class SlotGame {
 			if (chosenPosition === 'middle') positionOffset = 1;
 			if (chosenPosition === 'bottom') positionOffset = 2;
 
-			// 回転方向（true: 下方向）
+			// 回転方向フラグ（true: 下方向に進行＝reverseRotation での扱い）
 			const movingDown = this.config.reverseRotation;
 
-			// 現在位置から見て“前方”にある最も近いYを返すヘルパー
+			// currentY は外部で取得済み（この関数冒頭の currentY を参照）
+			// 「前方」にある最も近い baseY を返すヘルパー
 			const pickForwardClosestY = (baseY) => {
+				// 注意: この関数は baseY を基準に currentY の「前方方向」へ伸ばしていく。
+				//       ループ条件を誤ると無限ループや off-by-one が発生するため慎重に編集すること。
 				let y = baseY;
 				if (movingDown) {
+					// 下方向に動いている場合、表示上の数値（currentY）は負になり得るため、
+					// baseY を currentY 以上になるまで足して調整（最短で前方へ到達する値を生成）
 					while (y < currentY) y += reel.totalHeight;
 					while (y >= currentY + reel.totalHeight) y -= reel.totalHeight;
 				} else {
+					// 上方向に動いている場合
 					while (y > currentY) y -= reel.totalHeight;
 					while (y <= currentY - reel.totalHeight) y += reel.totalHeight;
 				}
@@ -550,13 +604,14 @@ class SlotGame {
 			let animTargetY;
 
 			if (typeof target.symbolIndex === 'number' && Number.isFinite(target.symbolIndex)) {
-				// 明示的なシンボルインデックス指定
+				// 明示的なシンボルインデックス指定（トップに来るべきシンボルインデックスを指定）
 				const rawIndex = ((target.symbolIndex % reelSymbols.length) + reelSymbols.length) % reelSymbols.length;
+				// positionOffset を考慮して「そのシンボルが top に来るインデックス」を算出
 				targetSymbolTopIndex = (rawIndex - positionOffset + reelSymbols.length) % reelSymbols.length;
 				baseTargetY = -targetSymbolTopIndex * symbolHeight;
 				animTargetY = pickForwardClosestY(baseTargetY);
 
-				// position未指定だった場合、シーム跨ぎ（animTargetY>=0）を回避できる位置を探索
+				// position が未指定の場合は seam（表示領域の継ぎ目）を回避しつつ距離が最短の候補を選ぶ
 				if (!validPositions.includes(target.position)) {
 					const candidates = [];
 					for (const pos of validPositions) {
@@ -564,11 +619,14 @@ class SlotGame {
 						const topIdx = (rawIndex - offset + reelSymbols.length) % reelSymbols.length;
 						const baseY = -topIdx * symbolHeight;
 						const y = pickForwardClosestY(baseY);
+						// 距離計算は進行方向に沿った単調増加距離を用いる
 						const dist = movingDown ? (y - currentY) : (currentY - y);
+						// wraps フラグは「1周分以上進むか」を示す（ラップ発生の判定）
 						const wraps = movingDown ? (y >= 0) : (y <= -reel.totalHeight);
 						candidates.push({ pos, y, dist, wraps, topIdx, baseY });
 					}
-					// ラップしない候補を優先、距離最小を選択
+					// 編集時の注意: sort の比較ロジックを変えるとラップ優先度や体感が変わるため、
+					// 最小の dist かつラップしない候補を優先する意図を崩さないでください。
 					candidates.sort((a, b) => (Number(a.wraps) - Number(b.wraps)) || (a.dist - b.dist));
 					const best = candidates[0];
 					chosenPosition = best.pos;
@@ -577,15 +635,17 @@ class SlotGame {
 					baseTargetY = best.baseY;
 				}
 			} else if (typeof target.symbol === 'string') {
-				// 絵柄（文字）指定: 該当絵柄の出現位置から前方最短を選択
+				// 絵柄指定: 該当絵柄が複数ある場合は「前方へ最短で到達」する出現位置を選択する
 				const candidates = [];
 				for (let ci = 0; ci < reelSymbols.length; ci++) {
 					if (reelSymbols[ci] === target.symbol) candidates.push(ci);
 				}
 				if (candidates.length === 0) {
+					// 指定された絵柄がこのリールに存在しない場合は通常停止へフォールバック
 					console.warn(`Target symbol not found on reel ${index}:`, target.symbol);
-					return this.stopReel(index, null); // 見つからなければ通常停止へフォールバック
+					return this.stopReel(index, null);
 				}
+				// 与えられたオフセットで最短となる候補を探索するヘルパー
 				const buildBestForOffset = (offset) => {
 					let best = { dist: Infinity, topIndex: 0, baseY: 0, y: 0, wraps: false };
 					for (const ci of candidates) {
@@ -600,6 +660,7 @@ class SlotGame {
 				};
 
 				if (!validPositions.includes(target.position)) {
+					// top/middle/bottom の各オフセットで最良を比較して選択
 					const options = [
 						{ pos: 'top', off: 0 },
 						{ pos: 'middle', off: 1 },
@@ -608,7 +669,7 @@ class SlotGame {
 						...o,
 						best: buildBestForOffset(o.off)
 					}));
-					// ラップしないもの優先、距離最小
+					// ラップしないものを優先、次に距離最小
 					options.sort((a, b) => (Number(a.best.wraps) - Number(b.best.wraps)) || (a.best.dist - b.best.dist));
 					const sel = options[0];
 					chosenPosition = sel.pos;
@@ -623,28 +684,30 @@ class SlotGame {
 					animTargetY = best.y;
 				}
 			} else {
-				// 指定がなければ通常停止へフォールバック
+				// 指定が不正または欠落している場合は通常停止処理へフォールバック
+				// （再帰呼び出しにより最終的に nearest boundary 停止へ統一される）
 				return this.stopReel(index, null);
 			}
 
-			// 表示レンジに正規化した最終ターゲット（-totalHeight..0）
+			// 表示レンジに正規化した最終ターゲット（範囲: -totalHeight .. 0）
+			// 正規化式は負値領域へ落とし込むための既定式。変更すると半周ずれる恐れあり。
 			const finalTargetYNormalized = (((animTargetY % reel.totalHeight) + reel.totalHeight) % reel.totalHeight) - reel.totalHeight;
 
-			// 停止アニメーション時間の計算（回転方向に沿った一方向の距離）
+			// 停止に必要な距離を、進行方向に沿って単方向で算出
 			let distanceToStop;
 			if (this.config.reverseRotation) {
-				// 下方向に進むため、負距離なら1周分進める
+				// 下方向に進むため、animTargetY が currentY より小さい（負の差）なら一周分追加して正にする
 				distanceToStop = animTargetY - currentY;
 				if (distanceToStop < 0) distanceToStop += reel.totalHeight;
 			} else {
-				// 上方向に進むため、正距離なら1周分戻す
+				// 上方向に進むため、currentY から animTargetY へ戻る量を正距離として算出
 				distanceToStop = currentY - animTargetY;
 				if (distanceToStop < 0) distanceToStop += reel.totalHeight;
 			}
-			// 距離に基づく停止アニメ時間（停止演出の一貫性のため共通関数を使用）
+			// 距離に基づく停止アニメ時間を共通関数で算出（ここで min/max によるクリッピングも行う）
 			duration = this.calculateStopDuration(distanceToStop);
 
-			// 最小・最大時間でクランプ（短すぎ停止/長すぎ減速を防ぐ）
+			// さらに上限/下限の二重保護（設定値の暴走を防ぐ）
 			duration = Math.min(Math.max(duration, this.config.minStopAnimTime), this.config.maxStopAnimTime);
 
 			// アニメーション開始
